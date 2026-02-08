@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Contact Us - Novasyne{% endblock %}
+
+{% block content %}
+<style>
+    .contact-wrapper {
+        max-width: 520px;
+        margin: 2rem auto;
+    }
+
+    .contact-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+    }
+
+    .contact-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        padding: 1.75rem 2rem;
+        text-align: center;
+    }
+
+    .contact-header .header-icon {
+        width: 48px;
+        height: 48px;
+        background: rgba(255,255,255,0.15);
+        border-radius: var(--radius);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 0.75rem;
+        backdrop-filter: blur(8px);
+    }
+
+    .contact-header .header-icon i {
+        font-size: 1.5rem;
+        color: var(--text-inverse);
+    }
+
+    .contact-header h2 {
+        color: var(--text-inverse);
+        font-size: 1.375rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .contact-header p {
+        color: rgba(255,255,255,0.8);
+        font-size: 0.8125rem;
+        margin: 0.5rem 0 0;
+    }
+
+    .contact-body {
+        padding: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .form-group:last-of-type {
+        margin-bottom: 1.5rem;
+    }
+
+    .contact-body .form-control,
+    .contact-body .form-select {
+        padding: 0.75rem 1rem;
+        font-size: 0.9375rem;
+    }
+
+    .contact-body textarea.form-control {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.9375rem;
+    }
+
+    /* Info Cards */
+    .contact-info {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        margin-top: 1.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .info-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem;
+        background: var(--surface-alt);
+        border-radius: var(--radius);
+    }
+
+    .info-item i {
+        font-size: 1.125rem;
+        color: var(--primary);
+    }
+
+    .info-item span {
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+    }
+
+    @media (max-width: 576px) {
+        .contact-info {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div class="contact-wrapper">
+    <div class="contact-card">
+        <div class="contact-header">
+            <div class="header-icon">
+                <i class="bi bi-envelope-paper"></i>
+            </div>
+            <h2>Contact Us</h2>
+            <p>We'd love to hear from you</p>
+        </div>
+
+        <div class="contact-body">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show mb-4" role="alert">
+                <i class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-circle' }} me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('contact') }}">
+                <div class="form-group">
+                    <label for="name" class="form-label">Full Name</label>
+                    <input type="text" class="form-control" id="name" name="name" placeholder="John Smith" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email" class="form-label">Email Address</label>
+                    <input type="email" class="form-control" id="email" name="email" placeholder="john@example.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="topic" class="form-label">Topic</label>
+                    <select class="form-select" id="topic" name="topic" required>
+                        <option value="" disabled selected>Please select a topic</option>
+                        <option value="Sales">Sales</option>
+                        <option value="Technical Support">Technical Support</option>
+                        <option value="Partnerships">Partnerships</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="message" class="form-label">Message</label>
+                    <textarea class="form-control" id="message" name="message" 
+                        placeholder="How can we help you?" required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-submit">
+                    <i class="bi bi-send me-2"></i>Send Message
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,21 @@
+-- Insert statements for study_types table
+-- Total records: 18
+
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('046364ee-2356-4a02-bfda-10b69ca0e4f8', 'Experimental', 'Non-Randomized Controlled Trial (Quasi-Experimental)');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('14e94e07-6e47-4171-b97a-11f29afbe91b', 'Observational', 'Cohort Study');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('42833aa1-ea02-4349-8a0f-19205e6d503c', 'Experimental', 'Randomized Controlled Trial (RCT)');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('5de5de05-7f23-49e2-beac-1becfe1d3842', 'Diagnostic / Screening', 'Screening Study');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('0a10d264-2852-4029-9b7a-238f7f97f9b0', 'Hybrid / Special', 'Before-and-After (Pre-Post) Study');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('cc302c26-282b-49c3-bea7-4bca7b76b20b', 'Diagnostic / Screening', 'Diagnostic Accuracy Study');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('42fb4b09-2a0f-41bd-8dfc-5f293234e58e', 'Observational', 'Case-Control Study');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('746b0406-4487-425f-bf11-6d32a59c5938', 'Experimental', 'Cluster Randomized Trial');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('b5e9a46b-d229-41e3-b5df-752892c1e282', 'Experimental', 'Crossover Trial');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('2f281b34-ee1b-442b-8ea4-7e34b7eabd03', 'Experimental', 'Adaptive Trial');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('5d10880d-bab5-4209-8fe8-7f00c151ddde', 'Hybrid / Special', 'Case-Cohort Study');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('adfba0e8-19df-4b23-9d81-8f7e720489a2', 'Observational', 'Longitudinal Study');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('7ca86250-96e4-4b47-9249-928ff37591af', 'Observational', 'Cross-Sectional Study');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('ffd6fd14-d0ec-4944-a68b-992ccf492478', 'Hybrid / Special', 'Nested Case-Control Study');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('f26bc0cd-d120-4939-9e14-a44dca0dc8a6', 'Observational', 'Ecological Study');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('dcfb5a4e-7457-484e-919c-a9439453b1b7', 'Experimental', 'Factorial Design Trial');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('0a4555d6-17f6-470b-9bee-c7f12dc62c71', 'Hybrid / Special', 'Interrupted Time Series');
+INSERT INTO [dbo].[study_types] ([study_type_id], [category], [study_type]) VALUES ('4ae969c1-5125-494c-81a9-f625126fa5c3', 'Observational', 'Case Series / Case Report');

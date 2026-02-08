@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Audit Log{% endblock %}
+
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<style>
+    .dataTables_wrapper .dataTables_length select {
+        padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+        padding: 0.375rem 0.75rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        margin-left: 0.5rem;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: #20519c !important;
+        border-color: #20519c !important;
+        color: white !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: #0b5ed7 !important;
+        border-color: #0a58ca !important;
+        color: white !important;
+    }
+
+    #auditLogTable thead th {
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<body data-page-name="audit_log">
+    <br/><br/>
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h2 class="card-title mb-0">Audit Log</h2>
+                        <div class="d-flex">
+                            <form method="POST" action="{{ url_for('view_audit_log') }}" id="clear-log-form">
+                                <input type="hidden" name="action" value="clear_log">
+                                <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                                    data-bs-target="#confirmClearModal">
+                                    <i class="bi bi-trash button-icon me-1"></i>Clear Log
+                                </button>
+                                                   <a href="{{ url_for('manage_account') }}" class="btn btn-secondary ms-2"><i
+                                            class="bi bi-file-earmark-arrow-up button-icon me-1"></i>Close</a>
+                            </form>
+
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table id="auditLogTable" class="table table-hover align-middle">
+                                <thead class="bg-light">
+                                    <tr style="cursor:pointer">
+                                        <th><span aria-hidden="true">&#8597;</span> Date/Time (UTC)</th>
+                                        <th><span aria-hidden="true">&#8597;</span> User</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Change Type</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Operation</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Study</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Subject</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Changed Table</th>
+                                        <th class="text-center">Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log, study_name, subject_code in logs_data %}
+                                    <tr>
+                                        <td>{{ log.change_datetime.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                        <td>{{ log.user_email }}</td>
+                                        <td><span class="badge bg-primary">{{ log.change_type }}</span></td>
+                                        <td>
+                                            {% if log.operation_type == 'INSERT' %}
+                                            <span class="badge bg-success">CREATE</span>
+                                            {% elif log.operation_type == 'UPDATE' %}
+                                            <span class="badge bg-warning text-dark">UPDATE</span>
+                                            {% elif log.operation_type == 'DELETE' %}
+                                            <span class="badge bg-danger">DELETE</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">{{ log.operation_type }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ study_name or 'N/A' }}</td>
+                                        <td>{{ subject_code or 'N/A' }}</td>
+                                        <td><small class="text-muted">{{ log.changed_table }}</small></td>
+                                        <td class="text-center">
+                                            {% if log.old_value or log.new_value %}
+                                            <button class="btn btn-sm btn-info" data-bs-toggle="modal"
+                                                data-bs-target="#detailsModal" data-log-id="{{ log.audit_log_id }}">
+                                                <i class="bi bi-file-earmark-text  me-1"></i>View
+                                            </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="detailsModal" tabindex="-1" aria-labelledby="detailsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="detailsModalLabel">Change Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"><i
+                            class="bi bi-x-circle"></i></button>
+                </div>
+                <div class="modal-body" id="detailsModalBody">
+                    <p class="text-center">Loading details...</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmClearModal" tabindex="-1" aria-labelledby="confirmClearModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmClearModalLabel">Confirm Action</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"><i
+                            class="bi bi-x-circle"></i></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to permanently delete all audit log entries?</p>
+                    <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="confirm-clear-btn">Confirm Clear</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+    $(document).ready(function () {
+
+        const table = $('#auditLogTable').DataTable({
+            order: [[0, 'desc']],
+            pageLength: 10,
+            language: {
+                search: "Search:",
+                lengthMenu: "Show _MENU_ entries per page",
+                info: "Showing _START_ to _END_ of _TOTAL_ entries",
+                infoEmpty: "No entries available",
+                infoFiltered: "(filtered from _MAX_ total entries)",
+                zeroRecords: "No matching records found",
+                paginate: {
+                    first: "First",
+                    last: "Last",
+                    next: "Next",
+                    previous: "Previous"
+                }
+            },
+            columnDefs: [
+                {
+                    orderable: false,
+                    targets: 7
+                }
+            ]
+        });
+
+        const detailsModal = document.getElementById('detailsModal');
+        if (detailsModal) {
+            detailsModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const logId = button.getAttribute('data-log-id');
+                const modalTitle = document.getElementById('detailsModalLabel');
+                const modalBody = document.getElementById('detailsModalBody');
+
+                modalTitle.textContent = `Change Details for Log: ${logId.substring(0, 8)}...`;
+                modalBody.innerHTML = '<p class="text-center">Loading details...</p>';
+
+                fetch(`/api/audit_log/${logId}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        modalBody.innerHTML = buildComparisonTable(data.old_value, data.new_value);
+                    })
+                    .catch(error => {
+                        modalBody.innerHTML = '<p class="text-danger">Error: Could not load details.</p>';
+                        console.error('Error fetching audit details:', error);
+                    });
+            });
+        }
+
+        const confirmClearBtn = document.getElementById('confirm-clear-btn');
+        const clearLogForm = document.getElementById('clear-log-form');
+        if (confirmClearBtn && clearLogForm) {
+            confirmClearBtn.addEventListener('click', function () {
+                clearLogForm.submit();
+            });
+        }
+
+        function buildComparisonTable(oldData, newData) {
+            const allKeys = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
+
+            if (allKeys.size === 0) {
+                return '<p>No old or new value data recorded for this operation.</p>';
+            }
+
+            let html = '<div class="table-responsive"><table class="table table-sm table-bordered">';
+            html += '<thead class="bg-light"><tr><th>Field</th><th>Old Value</th><th>New Value</th></tr></thead>';
+            html += '<tbody>';
+
+            allKeys.forEach(key => {
+                const oldValue = oldData[key] !== null && oldData[key] !== undefined ? oldData[key] : '';
+                const newValue = newData[key] !== null && newData[key] !== undefined ? newData[key] : '';
+
+                let rowClass = '';
+                if (oldValue !== newValue) {
+                    if (oldValue === '') rowClass = 'table-success';
+                    else if (newValue === '') rowClass = 'table-danger';
+                    else rowClass = 'table-warning';
+                }
+
+                html += `<tr class="${rowClass}">
+                            <td><strong>${escapeHTML(key)}</strong></td>
+                            <td>${escapeHTML(oldValue)}</td>
+                            <td>${escapeHTML(newValue)}</td>
+                         </tr>`;
+            });
+
+            html += '</tbody></table></div>';
+            return html;
+        }
+
+        function escapeHTML(str) {
+            if (typeof str !== 'string') {
+                str = String(str);
+            }
+            return str.replace(/[&<>"']/g, function (match) {
+                return {
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#39;'
+                }[match];
+            });
+        }
+    });
+</script>
+{% endblock %}

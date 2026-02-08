@@ -1,0 +1,1157 @@
+
+/****** Object:  Table [dbo].[audit_log]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[audit_log](
+	[audit_log_id] [uniqueidentifier] NOT NULL,
+	[change_datetime] [datetime2](7) NOT NULL,
+	[user_email] [nvarchar](120) NOT NULL,
+	[study_id] [uniqueidentifier] NULL,
+	[subject_id] [uniqueidentifier] NULL,
+	[record_id] [uniqueidentifier] NOT NULL,
+	[changed_table] [nvarchar](128) NOT NULL,
+	[change_type] [nvarchar](50) NOT NULL,
+	[operation_type] [nvarchar](10) NOT NULL,
+	[old_value] [nvarchar](max) NULL,
+	[new_value] [nvarchar](max) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[audit_log_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[biomarker_types]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[biomarker_types](
+	[biomarker_id] [uniqueidentifier] NOT NULL,
+	[sample_type] [nvarchar](100) NOT NULL,
+	[biomarker_name] [nvarchar](255) NOT NULL,
+	[category_notes] [nvarchar](max) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[biomarker_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[eeg]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[eeg](
+	[eeg_id] [int] IDENTITY(1,1) NOT NULL,
+	[manufacturer] [nvarchar](255) NOT NULL,
+	[device_type] [nvarchar](255) NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[eeg_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[expense_categories]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[expense_categories](
+	[category_id] [uniqueidentifier] NOT NULL,
+	[category_name] [varchar](100) NOT NULL,
+	[description] [text] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[category_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+UNIQUE NONCLUSTERED 
+(
+	[category_name] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[financial_ledger]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[financial_ledger](
+	[transaction_id] [uniqueidentifier] NOT NULL,
+	[study_id] [uniqueidentifier] NOT NULL,
+	[transaction_date] [date] NOT NULL,
+	[transaction_type] [varchar](20) NOT NULL,
+	[amount] [decimal](18, 2) NOT NULL,
+	[description] [text] NOT NULL,
+	[category_id] [uniqueidentifier] NULL,
+	[created_at] [datetime] NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[transaction_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[meddra_dictionary]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[meddra_dictionary](
+	[meddra_code] [nvarchar](20) NOT NULL,
+	[meddra_term] [nvarchar](255) NOT NULL,
+	[soc_name] [nvarchar](255) NULL,
+	[hlt_name] [nvarchar](255) NULL,
+	[pt_name] [nvarchar](255) NULL,
+	[llt_name] [nvarchar](255) NULL,
+ CONSTRAINT [PK_meddra_dictionary] PRIMARY KEY CLUSTERED 
+(
+	[meddra_code] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[studies]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[studies](
+	[study_id] [uniqueidentifier] NOT NULL,
+	[name] [nvarchar](255) NOT NULL,
+	[description] [nvarchar](max) NULL,
+	[start_date] [date] NULL,
+	[end_date] [date] NULL,
+	[status] [nvarchar](50) NULL,
+	[funding_source] [nvarchar](255) NULL,
+	[budget_amount] [decimal](18, 2) NULL,
+	[currency] [nvarchar](10) NULL,
+	[principal_investigator_id] [uniqueidentifier] NULL,
+	[created_at] [datetime2](7) NULL,
+	[updated_at] [datetime2](7) NULL,
+	[study_type_id] [uniqueidentifier] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[study_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[studies_knowledge]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[studies_knowledge](
+	[knowledge_id] [uniqueidentifier] NOT NULL,
+	[study_id] [uniqueidentifier] NOT NULL,
+	[filename] [nvarchar](255) NOT NULL,
+	[upload_date] [datetime] NOT NULL,
+	[data] [varbinary](max) NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[knowledge_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[studies_knowledge_vector]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[studies_knowledge_vector](
+	[vector_id] [uniqueidentifier] NOT NULL,
+	[knowledge_id] [uniqueidentifier] NOT NULL,
+	[chunk_index] [int] NOT NULL,
+	[text_content_preview] [nvarchar](max) NULL,
+	[vector_data] [varbinary](max) NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[vector_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+ CONSTRAINT [_knowledge_chunk_uc] UNIQUE NONCLUSTERED 
+(
+	[knowledge_id] ASC,
+	[chunk_index] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[study_arms]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[study_arms](
+	[arm_id] [uniqueidentifier] NOT NULL,
+	[study_id] [uniqueidentifier] NOT NULL,
+	[arm_name] [varchar](100) NOT NULL,
+	[description] [varchar](255) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[arm_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[study_documents]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[study_documents](
+	[document_id] [uniqueidentifier] NOT NULL,
+	[study_id] [uniqueidentifier] NOT NULL,
+	[filename] [nvarchar](255) NOT NULL,
+	[description] [nvarchar](max) NULL,
+	[upload_date] [datetime2](7) NOT NULL,
+	[data] [varbinary](max) NOT NULL,
+ CONSTRAINT [PK_study_documents] PRIMARY KEY CLUSTERED 
+(
+	[document_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[study_participant_link]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[study_participant_link](
+	[id] [uniqueidentifier] NOT NULL,
+	[study_id] [uniqueidentifier] NOT NULL,
+	[participant_id] [uniqueidentifier] NOT NULL,
+	[start_date] [date] NULL,
+	[end_date] [date] NULL,
+	[active] [bit] NULL,
+	[is_admin] [bit] NOT NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[study_participants]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[study_participants](
+	[participant_id] [uniqueidentifier] NOT NULL,
+	[first_name] [nvarchar](100) NULL,
+	[last_name] [nvarchar](100) NULL,
+	[email] [nvarchar](150) NULL,
+	[phone] [nvarchar](50) NULL,
+	[role] [nvarchar](100) NULL,
+	[affiliation] [nvarchar](255) NULL,
+	[department] [nvarchar](150) NULL,
+	[orcid] [nvarchar](50) NULL,
+	[country] [nvarchar](100) NULL,
+	[funding_role] [nvarchar](150) NULL,
+	[percent_effort] [decimal](5, 2) NULL,
+	[salary_contribution] [decimal](18, 2) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[participant_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[study_recordings]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[study_recordings](
+	[recording_id] [uniqueidentifier] NOT NULL,
+	[study_id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[recording_datetime] [datetime2](7) NOT NULL,
+	[recording_type] [nvarchar](50) NOT NULL,
+ CONSTRAINT [PK_study_recordings] PRIMARY KEY CLUSTERED 
+(
+	[recording_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[study_recordings_biomarker]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[study_recordings_biomarker](
+	[recording_id] [uniqueidentifier] NOT NULL,
+	[study_id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[biomarker_id] [uniqueidentifier] NOT NULL,
+	[biomarker_value] [decimal](18, 5) NOT NULL,
+ CONSTRAINT [PK_study_recordings_biomarker] PRIMARY KEY CLUSTERED 
+(
+	[recording_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[study_recordings_eeg]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[study_recordings_eeg](
+	[recording_id] [uniqueidentifier] NOT NULL,
+	[study_id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[data_uri] [varchar](250) NOT NULL,
+	[eeg_id] [int] NULL,
+ CONSTRAINT [PK_study_recordings_eeg] PRIMARY KEY CLUSTERED 
+(
+	[recording_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+CREATE TABLE [dbo].[study_recordings_image] (
+	[recording_id] UNIQUEIDENTIFIER NOT NULL,
+	[study_id] UNIQUEIDENTIFIER NOT NULL,
+	[subject_id] UNIQUEIDENTIFIER NOT NULL,
+	[data_uri] VARCHAR(250) NOT NULL,
+	[image_type] VARCHAR(50) NOT NULL
+) ON [PRIMARY]
+GO
+
+ALTER TABLE [dbo].[study_recordings_image]
+ADD CONSTRAINT [PK_study_recordings_image]
+PRIMARY KEY CLUSTERED (
+	[recording_id] ASC
+)
+WITH (
+	STATISTICS_NORECOMPUTE = OFF,
+	IGNORE_DUP_KEY = OFF,
+	ONLINE = OFF,
+	OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF
+) ON [PRIMARY]
+GO
+
+
+
+
+/****** Object:  Table [dbo].[study_recordings_wearable]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[study_recordings_wearable](
+	[recording_id] [uniqueidentifier] NOT NULL,
+	[study_id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[data_uri] [varchar](250) NOT NULL,
+	[wearable_id] [int] NULL,
+ CONSTRAINT [PK_study_recordings_wearable] PRIMARY KEY CLUSTERED 
+(
+	[recording_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[study_settings]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[study_settings](
+	[study_id] [uniqueidentifier] NOT NULL,
+	[ai_enabled] [bit] NOT NULL,
+	[ai_api_key] [nvarchar](250) NULL,
+	[eeg_enabled] [bit] NOT NULL,
+	[wearables_enabled] [bit] NOT NULL,
+	[biological_enabled] [bit] NOT NULL,
+	[scales_enabled] [bit] NOT NULL,
+ CONSTRAINT [PK_study_settings] PRIMARY KEY CLUSTERED 
+(
+	[study_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[study_settings_biomarker_types]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[study_settings_biomarker_types](
+	[study_id] [uniqueidentifier] NOT NULL,
+	[biomarker_id] [uniqueidentifier] NOT NULL,
+ CONSTRAINT [PK_study_settings_biomarker_types] PRIMARY KEY CLUSTERED 
+(
+	[study_id] ASC,
+	[biomarker_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[study_types]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[study_types](
+	[study_type_id] [uniqueidentifier] NOT NULL,
+	[category] [varchar](100) NOT NULL,
+	[study_type] [varchar](100) NOT NULL,
+ CONSTRAINT [PK_study_types] PRIMARY KEY CLUSTERED 
+(
+	[study_type_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[subject_adverse_events]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[subject_adverse_events](
+	[recording_id] [uniqueidentifier] NOT NULL,
+	[study_id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[ae_verbatim] [nvarchar](max) NULL,
+	[meddra_code] [nvarchar](20) NULL,
+	[meddra_term] [nvarchar](255) NULL,
+	[is_serious_ae] [bit] NOT NULL,
+	[severity_grade] [nvarchar](50) NULL,
+	[causality] [nvarchar](50) NULL,
+	[outcome] [nvarchar](100) NULL,
+ CONSTRAINT [PK_subject_adverse_events] PRIMARY KEY CLUSTERED 
+(
+	[recording_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[subject_clinicians]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[subject_clinicians](
+	[clinician_id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[first_name] [nvarchar](100) NULL,
+	[last_name] [nvarchar](100) NULL,
+	[specialty] [nvarchar](100) NULL,
+	[organization] [nvarchar](150) NULL,
+	[city] [nvarchar](100) NULL,
+	[country] [nvarchar](100) NULL,
+	[email] [nvarchar](150) NULL,
+	[phone] [nvarchar](50) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[clinician_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[subject_consent]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[subject_consent](
+	[consent_id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[consent_version] [nvarchar](50) NULL,
+	[consent_type] [nvarchar](50) NULL,
+	[signed_at] [datetime2](7) NULL,
+	[withdrawn_at] [datetime2](7) NULL,
+	[signature_file] [nvarchar](255) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[consent_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[subject_contacts]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[subject_contacts](
+	[contact_id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[contact_type] [nvarchar](20) NULL,
+	[contact_value] [nvarchar](255) NULL,
+	[preferred] [bit] NULL,
+	[verified] [bit] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[contact_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[subject_diagnoses]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[subject_diagnoses](
+	[id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[diagnosis_code] [nvarchar](20) NULL,
+	[diagnosis_description] [nvarchar](255) NULL,
+	[diagnosis_date] [date] NULL,
+	[status] [nvarchar](20) NULL,
+	[primary_diagnosis] [bit] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[subject_documents]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[subject_documents](
+	[document_id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[filename] [nvarchar](255) NOT NULL,
+	[description] [nvarchar](max) NULL,
+	[upload_date] [datetime2](7) NOT NULL,
+	[data] [varbinary](max) NOT NULL,
+ CONSTRAINT [PK_subject_documents] PRIMARY KEY CLUSTERED 
+(
+	[document_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[subject_medications]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[subject_medications](
+	[id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[medication_name] [nvarchar](150) NOT NULL,
+	[dose] [nvarchar](100) NULL,
+	[route] [nvarchar](50) NULL,
+	[start_date] [date] NULL,
+	[end_date] [date] NULL,
+	[indication] [nvarchar](150) NULL,
+	[currently_taking] [bit] NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[subject_medications_taken]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[subject_medications_taken](
+	[recording_id] [uniqueidentifier] NOT NULL,
+	[study_id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[medication_name] [nvarchar](255) NOT NULL,
+	[dose] [nvarchar](100) NULL,
+	[route] [nvarchar](50) NULL,
+	[indication] [nvarchar](max) NULL,
+	[is_concomitant] [bit] NOT NULL,
+ CONSTRAINT [PK_subject_medications_taken] PRIMARY KEY CLUSTERED 
+(
+	[recording_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[subject_symptoms]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[subject_symptoms](
+	[recording_id] [uniqueidentifier] NOT NULL,
+	[study_id] [uniqueidentifier] NOT NULL,
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[symptom_verbatim] [nvarchar](max) NULL,
+	[meddra_code] [nvarchar](20) NULL,
+	[meddra_term] [nvarchar](255) NULL,
+	[severity] [nvarchar](50) NULL,
+ CONSTRAINT [PK_subject_symptoms] PRIMARY KEY CLUSTERED 
+(
+	[recording_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[subjects]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[subjects](
+	[subject_id] [uniqueidentifier] NOT NULL,
+	[external_subject_code] [nvarchar](50) NULL,
+	[study_id] [uniqueidentifier] NULL,
+	[first_name] [nvarchar](100) NULL,
+	[last_name] [nvarchar](100) NULL,
+	[gender] [nvarchar](20) NULL,
+	[date_of_birth] [date] NULL,
+	[ethnicity] [nvarchar](100) NULL,
+	[city] [nvarchar](100) NULL,
+	[state_province] [nvarchar](100) NULL,
+	[country] [nvarchar](100) NULL,
+	[postal_code] [nvarchar](20) NULL,
+	[education_level] [nvarchar](100) NULL,
+	[employment_status] [nvarchar](100) NULL,
+	[marital_status] [nvarchar](50) NULL,
+	[height_cm] [decimal](5, 2) NULL,
+	[weight_kg] [decimal](5, 2) NULL,
+	[smoking_status] [nvarchar](20) NULL,
+	[alcohol_intake] [nvarchar](50) NULL,
+	[physical_activity_level] [nvarchar](20) NULL,
+	[consent_date] [date] NULL,
+	[withdrawal_date] [date] NULL,
+	[created_at] [datetime2](7) NULL,
+	[updated_at] [datetime2](7) NULL,
+	[arm_id] [uniqueidentifier] NULL,
+	[status] [nvarchar](50) NULL,
+	[enrollment_date] [date] NULL,
+	[completion_date] [date] NULL,
+	[screen_fail_date] [date] NULL,
+	[screen_fail_reason] [nvarchar](max) NULL,
+	[withdrawal_reason] [nvarchar](max) NULL,
+	[site_identifier] [nvarchar](100) NULL,
+	[race] [nvarchar](100) NULL,
+	[handedness] [nvarchar](20) NULL,
+	[pregnancy_status] [nvarchar](50) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[subject_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[user]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[user](
+	[id] [uniqueidentifier] NOT NULL,
+	[email] [nvarchar](120) NOT NULL,
+	[password_hash] [nvarchar](200) NOT NULL,
+	[email_confirmed] [bit] NOT NULL,
+	[ai_api_key] [nvarchar](250) NULL
+PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY],
+UNIQUE NONCLUSTERED 
+(
+	[email] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[wearables]    Script Date: 11/11/2025 7:54:04 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[wearables](
+	[wearable_id] [int] IDENTITY(1,1) NOT NULL,
+	[manufacturer] [nvarchar](255) NOT NULL,
+	[device_name] [nvarchar](255) NOT NULL,
+	[wearable_type] [nvarchar](255) NULL,
+	[wearable_location] [nvarchar](255) NULL,
+PRIMARY KEY CLUSTERED 
+(
+	[wearable_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [idx_biomarker_name]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_biomarker_name] ON [dbo].[biomarker_types]
+(
+	[biomarker_name] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [idx_biomarker_sample_type]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_biomarker_sample_type] ON [dbo].[biomarker_types]
+(
+	[sample_type] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_meddra_dictionary_meddra_term]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [IX_meddra_dictionary_meddra_term] ON [dbo].[meddra_dictionary]
+(
+	[meddra_term] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [idx_studies_status]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_studies_status] ON [dbo].[studies]
+(
+	[status] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [IX_studies_knowledge_study_id]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [IX_studies_knowledge_study_id] ON [dbo].[studies_knowledge]
+(
+	[study_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [idx_link_participant]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_link_participant] ON [dbo].[study_participant_link]
+(
+	[participant_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [idx_link_study]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_link_study] ON [dbo].[study_participant_link]
+(
+	[study_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [idx_participants_country]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_participants_country] ON [dbo].[study_participants]
+(
+	[country] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [idx_participants_role]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_participants_role] ON [dbo].[study_participants]
+(
+	[role] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [idx_consent_subject_id]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_consent_subject_id] ON [dbo].[subject_consent]
+(
+	[subject_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [idx_consent_type]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_consent_type] ON [dbo].[subject_consent]
+(
+	[consent_type] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [idx_contacts_subject_id]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_contacts_subject_id] ON [dbo].[subject_contacts]
+(
+	[subject_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [idx_contacts_type]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_contacts_type] ON [dbo].[subject_contacts]
+(
+	[contact_type] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [idx_diagnoses_code]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_diagnoses_code] ON [dbo].[subject_diagnoses]
+(
+	[diagnosis_code] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [idx_diagnoses_subject_id]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_diagnoses_subject_id] ON [dbo].[subject_diagnoses]
+(
+	[subject_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [idx_medications_name]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_medications_name] ON [dbo].[subject_medications]
+(
+	[medication_name] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [idx_medications_subject_id]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_medications_subject_id] ON [dbo].[subject_medications]
+(
+	[subject_id] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [idx_subjects_city]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_subjects_city] ON [dbo].[subjects]
+(
+	[city] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [idx_subjects_country]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [idx_subjects_country] ON [dbo].[subjects]
+(
+	[country] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
+/****** Object:  Index [IX_user_email]    Script Date: 11/11/2025 7:54:04 PM ******/
+CREATE NONCLUSTERED INDEX [IX_user_email] ON [dbo].[user]
+(
+	[email] ASC
+)WITH (STATISTICS_NORECOMPUTE = OFF, DROP_EXISTING = OFF, ONLINE = OFF, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[audit_log] ADD  DEFAULT (newid()) FOR [audit_log_id]
+GO
+ALTER TABLE [dbo].[audit_log] ADD  DEFAULT (getutcdate()) FOR [change_datetime]
+GO
+ALTER TABLE [dbo].[biomarker_types] ADD  DEFAULT (newid()) FOR [biomarker_id]
+GO
+ALTER TABLE [dbo].[expense_categories] ADD  DEFAULT (newid()) FOR [category_id]
+GO
+ALTER TABLE [dbo].[financial_ledger] ADD  DEFAULT (newid()) FOR [transaction_id]
+GO
+ALTER TABLE [dbo].[financial_ledger] ADD  DEFAULT (getutcdate()) FOR [created_at]
+GO
+ALTER TABLE [dbo].[studies] ADD  DEFAULT (newid()) FOR [study_id]
+GO
+ALTER TABLE [dbo].[studies] ADD  DEFAULT (getutcdate()) FOR [created_at]
+GO
+ALTER TABLE [dbo].[studies] ADD  DEFAULT (getutcdate()) FOR [updated_at]
+GO
+ALTER TABLE [dbo].[studies_knowledge] ADD  DEFAULT (newid()) FOR [knowledge_id]
+GO
+ALTER TABLE [dbo].[studies_knowledge] ADD  DEFAULT (getutcdate()) FOR [upload_date]
+GO
+ALTER TABLE [dbo].[studies_knowledge_vector] ADD  DEFAULT (newid()) FOR [vector_id]
+GO
+ALTER TABLE [dbo].[study_arms] ADD  DEFAULT (newid()) FOR [arm_id]
+GO
+ALTER TABLE [dbo].[study_documents] ADD  CONSTRAINT [DF_study_documents_upload_date]  DEFAULT (getutcdate()) FOR [upload_date]
+GO
+ALTER TABLE [dbo].[study_participant_link] ADD  DEFAULT (newid()) FOR [id]
+GO
+ALTER TABLE [dbo].[study_participant_link] ADD  DEFAULT ((1)) FOR [active]
+GO
+ALTER TABLE [dbo].[study_participant_link] ADD  DEFAULT ((0)) FOR [is_admin]
+GO
+ALTER TABLE [dbo].[study_participants] ADD  DEFAULT (newid()) FOR [participant_id]
+GO
+ALTER TABLE [dbo].[study_recordings] ADD  DEFAULT (newid()) FOR [recording_id]
+GO
+ALTER TABLE [dbo].[study_recordings] ADD  DEFAULT (sysutcdatetime()) FOR [recording_datetime]
+GO
+ALTER TABLE [dbo].[study_settings] ADD  CONSTRAINT [DF_study_settings_ai_enabled]  DEFAULT ((0)) FOR [ai_enabled]
+GO
+ALTER TABLE [dbo].[study_settings] ADD  CONSTRAINT [DF_study_settings_eeg_enabled]  DEFAULT ((0)) FOR [eeg_enabled]
+GO
+ALTER TABLE [dbo].[study_settings] ADD  CONSTRAINT [DF_study_settings_wearables_enabled]  DEFAULT ((0)) FOR [wearables_enabled]
+GO
+ALTER TABLE [dbo].[study_settings] ADD  CONSTRAINT [DF_study_settings_biological_enabled]  DEFAULT ((0)) FOR [biological_enabled]
+GO
+ALTER TABLE [dbo].[study_settings] ADD  CONSTRAINT [DF_study_settings_scales_enabled]  DEFAULT ((0)) FOR [scales_enabled]
+GO
+ALTER TABLE [dbo].[study_types] ADD  DEFAULT (newid()) FOR [study_type_id]
+GO
+ALTER TABLE [dbo].[subject_adverse_events] ADD  DEFAULT ((0)) FOR [is_serious_ae]
+GO
+ALTER TABLE [dbo].[subject_clinicians] ADD  DEFAULT (newid()) FOR [clinician_id]
+GO
+ALTER TABLE [dbo].[subject_consent] ADD  DEFAULT (newid()) FOR [consent_id]
+GO
+ALTER TABLE [dbo].[subject_consent] ADD  DEFAULT (getutcdate()) FOR [signed_at]
+GO
+ALTER TABLE [dbo].[subject_contacts] ADD  DEFAULT (newid()) FOR [contact_id]
+GO
+ALTER TABLE [dbo].[subject_contacts] ADD  DEFAULT ((0)) FOR [preferred]
+GO
+ALTER TABLE [dbo].[subject_contacts] ADD  DEFAULT ((0)) FOR [verified]
+GO
+ALTER TABLE [dbo].[subject_diagnoses] ADD  DEFAULT (newid()) FOR [id]
+GO
+ALTER TABLE [dbo].[subject_diagnoses] ADD  DEFAULT ((0)) FOR [primary_diagnosis]
+GO
+ALTER TABLE [dbo].[subject_documents] ADD  CONSTRAINT [DF_subject_documents_upload_date]  DEFAULT (getutcdate()) FOR [upload_date]
+GO
+ALTER TABLE [dbo].[subject_medications] ADD  DEFAULT (newid()) FOR [id]
+GO
+ALTER TABLE [dbo].[subject_medications] ADD  DEFAULT ((0)) FOR [currently_taking]
+GO
+ALTER TABLE [dbo].[subject_medications_taken] ADD  DEFAULT ((1)) FOR [is_concomitant]
+GO
+ALTER TABLE [dbo].[subjects] ADD  DEFAULT (newid()) FOR [subject_id]
+GO
+ALTER TABLE [dbo].[subjects] ADD  DEFAULT (getutcdate()) FOR [created_at]
+GO
+ALTER TABLE [dbo].[subjects] ADD  DEFAULT (getutcdate()) FOR [updated_at]
+GO
+ALTER TABLE [dbo].[subjects] ADD  CONSTRAINT [DF_subjects_status]  DEFAULT ('Screening') FOR [status]
+GO
+ALTER TABLE [dbo].[user] ADD  DEFAULT (newid()) FOR [id]
+GO
+ALTER TABLE [dbo].[user] ADD  DEFAULT ((0)) FOR [email_confirmed]
+GO
+ALTER TABLE [dbo].[financial_ledger]  WITH CHECK ADD  CONSTRAINT [FK_FinancialLedger_ExpenseCategory] FOREIGN KEY([category_id])
+REFERENCES [dbo].[expense_categories] ([category_id])
+GO
+ALTER TABLE [dbo].[financial_ledger] CHECK CONSTRAINT [FK_FinancialLedger_ExpenseCategory]
+GO
+ALTER TABLE [dbo].[financial_ledger]  WITH CHECK ADD  CONSTRAINT [FK_FinancialLedger_Study] FOREIGN KEY([study_id])
+REFERENCES [dbo].[studies] ([study_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[financial_ledger] CHECK CONSTRAINT [FK_FinancialLedger_Study]
+GO
+ALTER TABLE [dbo].[studies]  WITH CHECK ADD  CONSTRAINT [FK_studies_study_types] FOREIGN KEY([study_type_id])
+REFERENCES [dbo].[study_types] ([study_type_id])
+ON UPDATE CASCADE
+ON DELETE SET NULL
+GO
+ALTER TABLE [dbo].[studies] CHECK CONSTRAINT [FK_studies_study_types]
+GO
+ALTER TABLE [dbo].[studies_knowledge]  WITH CHECK ADD  CONSTRAINT [FK_studies_knowledge_studies] FOREIGN KEY([study_id])
+REFERENCES [dbo].[studies] ([study_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[studies_knowledge] CHECK CONSTRAINT [FK_studies_knowledge_studies]
+GO
+ALTER TABLE [dbo].[studies_knowledge_vector]  WITH CHECK ADD  CONSTRAINT [FK_studies_knowledge_vector_studies_knowledge] FOREIGN KEY([knowledge_id])
+REFERENCES [dbo].[studies_knowledge] ([knowledge_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[studies_knowledge_vector] CHECK CONSTRAINT [FK_studies_knowledge_vector_studies_knowledge]
+GO
+ALTER TABLE [dbo].[study_arms]  WITH CHECK ADD  CONSTRAINT [FK_study_arms_studies] FOREIGN KEY([study_id])
+REFERENCES [dbo].[studies] ([study_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[study_arms] CHECK CONSTRAINT [FK_study_arms_studies]
+GO
+ALTER TABLE [dbo].[study_documents]  WITH CHECK ADD  CONSTRAINT [FK_study_documents_studies] FOREIGN KEY([study_id])
+REFERENCES [dbo].[studies] ([study_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[study_documents] CHECK CONSTRAINT [FK_study_documents_studies]
+GO
+ALTER TABLE [dbo].[study_participant_link]  WITH CHECK ADD  CONSTRAINT [fk_link_participant] FOREIGN KEY([participant_id])
+REFERENCES [dbo].[study_participants] ([participant_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[study_participant_link] CHECK CONSTRAINT [fk_link_participant]
+GO
+ALTER TABLE [dbo].[study_participant_link]  WITH CHECK ADD  CONSTRAINT [fk_link_study] FOREIGN KEY([study_id])
+REFERENCES [dbo].[studies] ([study_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[study_participant_link] CHECK CONSTRAINT [fk_link_study]
+GO
+ALTER TABLE [dbo].[study_recordings]  WITH CHECK ADD  CONSTRAINT [FK_study_recordings_studies] FOREIGN KEY([study_id])
+REFERENCES [dbo].[studies] ([study_id])
+GO
+ALTER TABLE [dbo].[study_recordings] CHECK CONSTRAINT [FK_study_recordings_studies]
+GO
+ALTER TABLE [dbo].[study_recordings]  WITH CHECK ADD  CONSTRAINT [FK_study_recordings_subjects] FOREIGN KEY([subject_id])
+REFERENCES [dbo].[subjects] ([subject_id])
+GO
+ALTER TABLE [dbo].[study_recordings] CHECK CONSTRAINT [FK_study_recordings_subjects]
+GO
+ALTER TABLE [dbo].[study_recordings_biomarker]  WITH CHECK ADD  CONSTRAINT [FK_biomarker_to_biomarker_types] FOREIGN KEY([biomarker_id])
+REFERENCES [dbo].[biomarker_types] ([biomarker_id])
+GO
+ALTER TABLE [dbo].[study_recordings_biomarker] CHECK CONSTRAINT [FK_biomarker_to_biomarker_types]
+GO
+ALTER TABLE [dbo].[study_recordings_biomarker]  WITH CHECK ADD  CONSTRAINT [FK_biomarker_to_recording] FOREIGN KEY([recording_id])
+REFERENCES [dbo].[study_recordings] ([recording_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[study_recordings_biomarker] CHECK CONSTRAINT [FK_biomarker_to_recording]
+GO
+ALTER TABLE [dbo].[study_recordings_eeg]  WITH CHECK ADD  CONSTRAINT [FK_eeg_to_recording] FOREIGN KEY([recording_id])
+REFERENCES [dbo].[study_recordings] ([recording_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[study_recordings_eeg] CHECK CONSTRAINT [FK_eeg_to_recording]
+GO
+ALTER TABLE [dbo].[study_recordings_eeg]  WITH CHECK ADD  CONSTRAINT [FK_study_recordings_eeg_device] FOREIGN KEY([eeg_id])
+REFERENCES [dbo].[eeg] ([eeg_id])
+GO
+ALTER TABLE [dbo].[study_recordings_eeg] CHECK CONSTRAINT [FK_study_recordings_eeg_device]
+GO
+ALTER TABLE [dbo].[study_recordings_wearable]  WITH CHECK ADD  CONSTRAINT [FK_study_recordings_wearable_device] FOREIGN KEY([wearable_id])
+REFERENCES [dbo].[wearables] ([wearable_id])
+GO
+ALTER TABLE [dbo].[study_recordings_wearable] CHECK CONSTRAINT [FK_study_recordings_wearable_device]
+GO
+ALTER TABLE [dbo].[study_recordings_wearable]  WITH CHECK ADD  CONSTRAINT [FK_wearable_to_recording] FOREIGN KEY([recording_id])
+REFERENCES [dbo].[study_recordings] ([recording_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[study_recordings_wearable] CHECK CONSTRAINT [FK_wearable_to_recording]
+GO
+ALTER TABLE [dbo].[study_settings]  WITH CHECK ADD  CONSTRAINT [FK_study_settings_studies] FOREIGN KEY([study_id])
+REFERENCES [dbo].[studies] ([study_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[study_settings] CHECK CONSTRAINT [FK_study_settings_studies]
+GO
+ALTER TABLE [dbo].[study_settings_biomarker_types]  WITH CHECK ADD  CONSTRAINT [FK_study_settings_biomarkers_studies] FOREIGN KEY([study_id])
+REFERENCES [dbo].[studies] ([study_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[study_settings_biomarker_types] CHECK CONSTRAINT [FK_study_settings_biomarkers_studies]
+GO
+ALTER TABLE [dbo].[study_settings_biomarker_types]  WITH CHECK ADD  CONSTRAINT [FK_study_settings_biomarkers_types] FOREIGN KEY([biomarker_id])
+REFERENCES [dbo].[biomarker_types] ([biomarker_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[study_settings_biomarker_types] CHECK CONSTRAINT [FK_study_settings_biomarkers_types]
+GO
+ALTER TABLE [dbo].[subject_adverse_events]  WITH CHECK ADD  CONSTRAINT [FK_subject_adverse_events_meddra] FOREIGN KEY([meddra_code])
+REFERENCES [dbo].[meddra_dictionary] ([meddra_code])
+GO
+ALTER TABLE [dbo].[subject_adverse_events] CHECK CONSTRAINT [FK_subject_adverse_events_meddra]
+GO
+ALTER TABLE [dbo].[subject_adverse_events]  WITH CHECK ADD  CONSTRAINT [FK_subject_adverse_events_recording] FOREIGN KEY([recording_id])
+REFERENCES [dbo].[study_recordings] ([recording_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[subject_adverse_events] CHECK CONSTRAINT [FK_subject_adverse_events_recording]
+GO
+ALTER TABLE [dbo].[subject_adverse_events]  WITH CHECK ADD  CONSTRAINT [FK_subject_adverse_events_study] FOREIGN KEY([study_id])
+REFERENCES [dbo].[studies] ([study_id])
+GO
+ALTER TABLE [dbo].[subject_adverse_events] CHECK CONSTRAINT [FK_subject_adverse_events_study]
+GO
+ALTER TABLE [dbo].[subject_adverse_events]  WITH CHECK ADD  CONSTRAINT [FK_subject_adverse_events_subject] FOREIGN KEY([subject_id])
+REFERENCES [dbo].[subjects] ([subject_id])
+GO
+ALTER TABLE [dbo].[subject_adverse_events] CHECK CONSTRAINT [FK_subject_adverse_events_subject]
+GO
+ALTER TABLE [dbo].[subject_clinicians]  WITH CHECK ADD  CONSTRAINT [fk_clinicians_subject] FOREIGN KEY([subject_id])
+REFERENCES [dbo].[subjects] ([subject_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[subject_clinicians] CHECK CONSTRAINT [fk_clinicians_subject]
+GO
+ALTER TABLE [dbo].[subject_consent]  WITH CHECK ADD  CONSTRAINT [fk_consent_subject] FOREIGN KEY([subject_id])
+REFERENCES [dbo].[subjects] ([subject_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[subject_consent] CHECK CONSTRAINT [fk_consent_subject]
+GO
+ALTER TABLE [dbo].[subject_contacts]  WITH CHECK ADD  CONSTRAINT [fk_contacts_subject] FOREIGN KEY([subject_id])
+REFERENCES [dbo].[subjects] ([subject_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[subject_contacts] CHECK CONSTRAINT [fk_contacts_subject]
+GO
+ALTER TABLE [dbo].[subject_diagnoses]  WITH CHECK ADD  CONSTRAINT [fk_diagnoses_subject] FOREIGN KEY([subject_id])
+REFERENCES [dbo].[subjects] ([subject_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[subject_diagnoses] CHECK CONSTRAINT [fk_diagnoses_subject]
+GO
+ALTER TABLE [dbo].[subject_documents]  WITH CHECK ADD  CONSTRAINT [FK_subject_documents_subjects] FOREIGN KEY([subject_id])
+REFERENCES [dbo].[subjects] ([subject_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[subject_documents] CHECK CONSTRAINT [FK_subject_documents_subjects]
+GO
+ALTER TABLE [dbo].[subject_medications]  WITH CHECK ADD  CONSTRAINT [fk_medications_subject] FOREIGN KEY([subject_id])
+REFERENCES [dbo].[subjects] ([subject_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[subject_medications] CHECK CONSTRAINT [fk_medications_subject]
+GO
+ALTER TABLE [dbo].[subject_medications_taken]  WITH CHECK ADD  CONSTRAINT [FK_subject_medications_taken_recording] FOREIGN KEY([recording_id])
+REFERENCES [dbo].[study_recordings] ([recording_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[subject_medications_taken] CHECK CONSTRAINT [FK_subject_medications_taken_recording]
+GO
+ALTER TABLE [dbo].[subject_medications_taken]  WITH CHECK ADD  CONSTRAINT [FK_subject_medications_taken_study] FOREIGN KEY([study_id])
+REFERENCES [dbo].[studies] ([study_id])
+GO
+ALTER TABLE [dbo].[subject_medications_taken] CHECK CONSTRAINT [FK_subject_medications_taken_study]
+GO
+ALTER TABLE [dbo].[subject_medications_taken]  WITH CHECK ADD  CONSTRAINT [FK_subject_medications_taken_subject] FOREIGN KEY([subject_id])
+REFERENCES [dbo].[subjects] ([subject_id])
+GO
+ALTER TABLE [dbo].[subject_medications_taken] CHECK CONSTRAINT [FK_subject_medications_taken_subject]
+GO
+ALTER TABLE [dbo].[subject_symptoms]  WITH CHECK ADD  CONSTRAINT [FK_subject_symptoms_meddra] FOREIGN KEY([meddra_code])
+REFERENCES [dbo].[meddra_dictionary] ([meddra_code])
+GO
+ALTER TABLE [dbo].[subject_symptoms] CHECK CONSTRAINT [FK_subject_symptoms_meddra]
+GO
+ALTER TABLE [dbo].[subject_symptoms]  WITH CHECK ADD  CONSTRAINT [FK_subject_symptoms_recording] FOREIGN KEY([recording_id])
+REFERENCES [dbo].[study_recordings] ([recording_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[subject_symptoms] CHECK CONSTRAINT [FK_subject_symptoms_recording]
+GO
+ALTER TABLE [dbo].[subject_symptoms]  WITH CHECK ADD  CONSTRAINT [FK_subject_symptoms_study] FOREIGN KEY([study_id])
+REFERENCES [dbo].[studies] ([study_id])
+GO
+ALTER TABLE [dbo].[subject_symptoms] CHECK CONSTRAINT [FK_subject_symptoms_study]
+GO
+ALTER TABLE [dbo].[subject_symptoms]  WITH CHECK ADD  CONSTRAINT [FK_subject_symptoms_subject] FOREIGN KEY([subject_id])
+REFERENCES [dbo].[subjects] ([subject_id])
+GO
+ALTER TABLE [dbo].[subject_symptoms] CHECK CONSTRAINT [FK_subject_symptoms_subject]
+GO
+ALTER TABLE [dbo].[subjects]  WITH CHECK ADD  CONSTRAINT [FK_subjects_study_arms] FOREIGN KEY([arm_id])
+REFERENCES [dbo].[study_arms] ([arm_id])
+GO
+ALTER TABLE [dbo].[subjects] CHECK CONSTRAINT [FK_subjects_study_arms]
+GO
+ALTER TABLE [dbo].[audit_log]  WITH CHECK ADD  CONSTRAINT [CK_audit_log_operation] CHECK  (([operation_type]='DELETE' OR [operation_type]='UPDATE' OR [operation_type]='INSERT'))
+GO
+ALTER TABLE [dbo].[audit_log] CHECK CONSTRAINT [CK_audit_log_operation]
+GO
+ALTER TABLE [dbo].[studies]  WITH CHECK ADD CHECK  (([status]='Withdrawn' OR [status]='Completed' OR [status]='Ongoing' OR [status]='Planned'))
+GO
+ALTER TABLE [dbo].[subject_consent]  WITH CHECK ADD CHECK  (([consent_type]='Wearable Use' OR [consent_type]='Data Sharing' OR [consent_type]='Genetic' OR [consent_type]='General'))
+GO
+ALTER TABLE [dbo].[subject_diagnoses]  WITH CHECK ADD CHECK  (([status]='Chronic' OR [status]='Resolved' OR [status]='Active'))
+GO
+
+
+-- FK → study_recordings (with cascade, matches your wearable table)
+ALTER TABLE [dbo].[study_recordings_image] WITH CHECK
+ADD CONSTRAINT [FK_image_to_recording]
+FOREIGN KEY ([recording_id])
+REFERENCES [dbo].[study_recordings] ([recording_id])
+ON DELETE CASCADE
+GO
+ALTER TABLE [dbo].[study_recordings_image]
+CHECK CONSTRAINT [FK_image_to_recording]
+GO
+
+-- FK → studies
+ALTER TABLE [dbo].[study_recordings_image] WITH CHECK
+ADD CONSTRAINT [FK_image_to_study]
+FOREIGN KEY ([study_id])
+REFERENCES [dbo].[studies] ([study_id])
+GO
+ALTER TABLE [dbo].[study_recordings_image]
+CHECK CONSTRAINT [FK_image_to_study]
+GO
+
+-- FK → subjects
+ALTER TABLE [dbo].[study_recordings_image] WITH CHECK
+ADD CONSTRAINT [FK_image_to_subject]
+FOREIGN KEY ([subject_id])
+REFERENCES [dbo].[subjects] ([subject_id])
+GO
+ALTER TABLE [dbo].[study_recordings_image]
+CHECK CONSTRAINT [FK_image_to_subject]
+GO

@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Study{% endblock %}
+
+{% block content %}
+
+<body data-page-name="edit_study">
+    <br/><br/>
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Manage Study</h2>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('edit_study', study_id=study.study_id) }}">
+
+                            <div class="mb-3">
+                                <label for="name" class="form-label">Study Name</label>
+                                <input type="text" class="form-control" id="name" name="name"
+                                    value="{{ study.name or '' }}" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">Study Description</label>
+                                <textarea class="form-control" id="description" name="description"
+                                    rows="3">{{ study.description or '' }}</textarea>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="start_date" class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="start_date" name="start_date"
+                                        value="{{ study.start_date.strftime('%Y-%m-%d') if study.start_date }}">
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="end_date" class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="end_date" name="end_date"
+                                        value="{{ study.end_date.strftime('%Y-%m-%d') if study.end_date }}">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="status" class="form-label">Status</label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="Planned" {% if study.status=='Planned' %}selected{% endif %}>Planned
+                                    </option>
+                                    <option value="Ongoing" {% if study.status=='Ongoing' %}selected{% endif %}>Ongoing
+                                    </option>
+                                    <option value="Completed" {% if study.status=='Completed' %}selected{% endif %}>
+                                        Completed</option>
+                                    <option value="Withdrawn" {% if study.status=='Withdrawn' %}selected{% endif %}>
+                                        Withdrawn</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="funding_source" class="form-label">Funding Source</label>
+                                <input type="text" class="form-control" id="funding_source" name="funding_source"
+                                    value="{{ study.funding_source or '' }}">
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="budget_amount" class="form-label">Budget Amount</label>
+                                    <input type="number" class="form-control" id="budget_amount" name="budget_amount"
+                                        step="0.01" placeholder="e.g., 50000.00"
+                                        value="{{ study.budget_amount or '' }}">
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+                                    <label for="currency" class="form-label">Currency</label>
+                                    <input type="text" class="form-control" id="currency" name="currency"
+                                        placeholder="e.g., USD, EUR" value="{{ study.currency or '' }}">
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <button type="button" class="btn btn-info ms-2 {{ 'disabled' if not is_admin else '' }}" data-bs-toggle="modal"
+                                        data-bs-target="#studySettingsModal">
+                                        <i class="bi bi-sliders button-icon me-1 "></i>Settings
+                                    </button>
+                                    <a href="{{ url_for('manage_participants', study_id=study.study_id) }}"
+                                        class="btn btn-info  ms-2 {{ 'disabled' if not is_admin else '' }}"><i
+                                            class="bi bi-person-vcard button-icon me-1"></i>Participants</a>
+                                    <a href="{{ url_for('edit_arms', study_id=study.study_id) }}"
+                                        class="btn btn-info ms-2"><i
+                                            class="bi bi-people-fill button-icon me-1 {{ 'disabled' if not is_admin else '' }}"></i>Arms</a>
+                                    <a href="{{ url_for('manage_subjects', study_id=study.study_id) }}"
+                                        class="btn btn-info ms-2"><i
+                                            class="bi bi-person-lines-fill button-icon me-1"></i>Subjects</a>
+                                    <a href="{{ url_for('finances', study_id=study.study_id) }}"
+                                        class="btn btn-info ms-2"><i
+                                            class="bi bi-currency-exchange button-icon me-1 {{ 'disabled' if not is_admin else '' }}"></i>Finances</a>
+                                    <a href="{{ url_for('study_recordings', study_id=study.study_id) }}"
+                                        class="btn btn-info ms-2">
+                                        <i class="bi bi-pencil-square button-icon me-1"></i>Recordings
+                                    </a>
+
+
+                                </div>
+                                <div>
+                                    <button type="submit" class="btn btn-primary  {{ 'disabled' if not is_admin else '' }}"><i
+                                            class="bi bi-plus-square button-icon me-1"></i>Update</button>
+                                    <a href="{{ url_for('main_app') }}" class="btn btn-secondary ms-2"><i
+                                            class="bi bi-file-earmark-arrow-up button-icon me-1"></i>Close</a>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="mt-4 border-top pt-3">
+                            <div class="d-flex justify-content-start">
+                                <a href="{{ url_for('static', filename='STUDYPRO_Trial_Templates.zip') }}" download class="btn btn-success me-2">
+                                    <i class="bi bi-file-earmark-zip button-icon me-1"></i>Document Pack
+                                </a>
+                                <button type="button" class="btn btn-success me-2 {{ 'disabled' if not is_admin else '' }}" id="exportButton">
+                                    <i class="bi bi-cloud-download button-icon me-1"></i>Export Study
+                                </button>
+                                <button type="button" class="btn btn-danger {{ 'disabled' if not is_admin else '' }}" data-bs-toggle="modal"
+                                    data-bs-target="#revokeConfirmationModal">
+                                    <i class="bi bi-trash button-icon me-1"></i>Revoke Study
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="studySettingsModal" tabindex="-1" aria-labelledby="studySettingsModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('save_study_settings', study_id=study.study_id) }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="studySettingsModalLabel">Study Settings</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3 p-3 border rounded" style="background-color: #f8f9fa;">
+                            <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" role="switch" id="modal_ai_enabled"
+                                    name="ai_enabled" value="true" {% if study_settings.ai_enabled %}checked{% endif %}>
+                                <label class="form-check-label" for="modal_ai_enabled"><strong>Enable AI
+                                        Features</strong></label>
+                            </div>
+                            <div class="mb-3">
+                                <label for="modal_ai_api_key" class="form-label small">OpenAI API Key</label>
+                                <input type="password" class="form-control form-control-sm" id="modal_ai_api_key"
+                                    name="ai_api_key" value="{{ study_settings.ai_api_key or '' }}"
+                                    placeholder="Enter API Key..." {% if not study_settings.ai_enabled %}disabled{%
+                                    endif %}>
+                                <div class="form-text">The API key is only required if AI features are enabled.</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3 p-3 border rounded" style="background-color: #f8f9fa;">
+                            <h6 class="mb-3">Allowed Data Types</h6>
+                            <div class="form-check">
+                                <input class="form-check-input modal-data-type-toggle" type="checkbox"
+                                    id="modal_eeg_enabled" name="eeg_enabled" value="true" {% if
+                                    study_settings.eeg_enabled %}checked{% endif %}>
+                                <label class="form-check-label" for="modal_eeg_enabled">
+                                    Allow EEG Data
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input modal-data-type-toggle" type="checkbox"
+                                    id="modal_wearables_enabled" name="wearables_enabled" value="true" {% if
+                                    study_settings.wearables_enabled %}checked{% endif %}>
+                                <label class="form-check-label" for="modal_wearables_enabled">
+                                    Allow Wearable Data
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input modal-data-type-toggle" type="checkbox"
+                                    id="modal_biological_enabled" name="biological_enabled" value="true" {% if
+                                    study_settings.biological_enabled %}checked{% endif %}>
+                                <label class="form-check-label" for="modal_biological_enabled">
+                                    Allow Biological Samples & Other Biomarkers
+                                </label>
+                            </div>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input data-type-filter" type="checkbox" value="true" id="modal_scales_enabled" name="scales_enabled"
+                                    {% if study_settings.scales_enabled %}checked{% endif %}>
+                                <label class="form-check-label" for="modal_scales_enabled">
+                                    Allow Patient Scales / PROs
+                                </label>
+                            </div>
+                            <div class="mb-3">
+                                <label for="modal_biomarker_types_select" class="form-label"><strong>Select Allowed
+                                        Biomarkers</strong></label>
+                                <select class="form-select" id="modal_biomarker_types_select" name="biomarker_types"
+                                    multiple size="8">
+                                </select>
+                                <div class="form-text">Select one or more biomarkers. Use Ctrl/Cmd + Click to select
+                                    multiple.</div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary"><i
+                                class="bi bi-plus-square button-icon me-1"></i>Save Settings</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                                class="bi bi-x-circle button-icon me-1"></i>Cancel</button>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="modal fade" id="revokeConfirmationModal" tabindex="-1" aria-labelledby="revokeModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="revokeModalLabel">Confirm Study Revocation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Revoking a study will permanently delete the study and all associated records. Are you sure?</p>
+                    <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <form action="{{ url_for('revoke_study', study_id=study.study_id) }}" method="POST">
+                        <button type="submit" class="btn btn-danger"><i
+                                class="bi bi-check button-icon me-1"></i>OK</button>
+                    </form>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Cancel</button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="exportProgressModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true"
+        data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exportModalLabel">Exporting Study Data</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Please wait while we gather and compress all study data. This may take several minutes depending
+                        on the size of the study.</p>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+                            style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const exportButton = document.getElementById('exportButton');
+        if (exportButton) {
+            const exportModal = new bootstrap.Modal(document.getElementById('exportProgressModal'));
+            const studyId = "{{ study.study_id }}";
+            const studyName = "{{ study.name | replace('"', '') | replace(' ', '_') | replace('.', '') }}";
+
+            exportButton.addEventListener('click', function () {
+                exportModal.show();
+
+                fetch(`/export_study/${studyId}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.text().then(text => {
+                                throw new Error('Export failed: ' + (text || response.statusText));
+                            });
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.style.display = 'none';
+                        a.href = url;
+                        a.download = `${studyName}.zip`;
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                    })
+                    .catch(error => {
+                        console.error('There was a problem with the export operation:', error);
+                        alert('An error occurred during the export. Please check the console for details. Error: ' + error.message);
+                    })
+                    .finally(() => {
+                        exportModal.hide();
+                    });
+            });
+        } else {
+            console.error("Export button not found.");
+        }
+
+        const allBiomarkers = [
+            {% for b in all_biomarkers %}
+            { id: "{{ b.biomarker_id }}", name: "{{ b.biomarker_name }}", type: "{{ b.sample_type | lower }}", sample_type: "{{ b.sample_type }}" },
+        {% endfor %}
+        ];
+    const selectedBiomarkerIds = new Set(JSON.parse('{{ selected_biomarker_ids | safe }}'));
+    const settingsModal = document.getElementById('studySettingsModal');
+    const aiEnabledCheckbox = document.getElementById('modal_ai_enabled');
+    const aiApiKeyInput = document.getElementById('modal_ai_api_key');
+    const eegCheckbox = document.getElementById('modal_eeg_enabled');
+    const wearablesCheckbox = document.getElementById('modal_wearables_enabled');
+    const biologicalCheckbox = document.getElementById('modal_biological_enabled');
+    const biomarkerSelect = document.getElementById('modal_biomarker_types_select');
+    const dataCheckboxes = document.querySelectorAll('.modal-data-type-toggle');
+
+    aiEnabledCheckbox.addEventListener('change', function () {
+        if (this.checked) {
+            aiApiKeyInput.disabled = false;
+        } else {
+            aiApiKeyInput.disabled = true;
+            aiApiKeyInput.value = '';
+        }
+    });
+
+    function updateBiomarkerList() {
+        const showEEG = eegCheckbox.checked;
+        const showWearables = wearablesCheckbox.checked;
+        const showBiological = biologicalCheckbox.checked;
+
+        biomarkerSelect.innerHTML = '';
+        let hasOptions = false;
+
+        if (!showEEG && !showWearables && !showBiological) {
+            biomarkerSelect.disabled = true;
+            const placeholder = new Option('Enable data types to see options', '', false, false);
+            placeholder.disabled = true;
+            biomarkerSelect.add(placeholder);
+            return;
+        }
+
+        biomarkerSelect.disabled = false;
+
+        allBiomarkers.forEach(biomarker => {
+            let include = false;
+            const sampleType = biomarker.type;
+
+            if (showEEG && sampleType === 'eeg') {
+                include = true;
+            } else if (showWearables && sampleType === 'wearable') {
+                include = true;
+            } else if (showBiological && sampleType !== 'eeg' && sampleType !== 'wearable') {
+                include = true;
+            }
+
+            if (include) {
+                const displayName = `${biomarker.name} (${biomarker.sample_type})`;
+                const isSelected = selectedBiomarkerIds.has(biomarker.id);
+                const option = new Option(displayName, biomarker.id, false, isSelected);
+                biomarkerSelect.add(option);
+                hasOptions = true;
+            }
+        });
+
+        if (!hasOptions) {
+            const placeholder = new Option('No biomarkers match selected types', '', false, false);
+            placeholder.disabled = true;
+            biomarkerSelect.add(placeholder);
+        }
+    }
+
+    dataCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', updateBiomarkerList);
+    });
+
+    if (settingsModal) {
+        settingsModal.addEventListener('show.bs.modal', function () {
+            aiEnabledCheckbox.dispatchEvent(new Event('change'));
+            updateBiomarkerList();
+        });
+    }
+    });
+</script>
+{% endblock %}

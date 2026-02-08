@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}About Us - Novasyne{% endblock %}
+
+{% block content %}
+<style>
+    .about-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+        max-width: 900px;
+        margin: 2rem auto;
+    }
+
+    .about-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .about-header h1 {
+        color: var(--text-inverse);
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .about-header p {
+        color: rgba(255,255,255,0.8);
+        font-size: 0.875rem;
+        margin: 0.5rem 0 0;
+    }
+
+    .about-body {
+        padding: 2.5rem;
+    }
+
+    .about-body .lead {
+        font-size: 1.0625rem;
+        font-weight: 600;
+        color: var(--primary);
+        line-height: 1.7;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 2px solid;
+    }
+
+    .about-body p {
+        font-size: 0.9375rem;
+        color: var(--text-secondary);
+        line-height: 1.8;
+        margin-bottom: 1.25rem;
+        text-align: justify;
+    }
+
+    .about-body p:last-of-type {
+        margin-bottom: 0;
+    }
+
+    .about-footer {
+        background: var(--surface-alt);
+        padding: 1.5rem 2.5rem;
+        border-top: 1px solid var(--border);
+        text-align: center;
+    }
+
+    .about-footer img {
+        max-width: 120px;
+        height: auto;
+        opacity: 0.9;
+        transition: var(--transition);
+    }
+
+    .about-footer img:hover {
+        opacity: 1;
+    }
+
+    /* Values Section */
+    .values-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.25rem;
+        margin-top: 2rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border);
+    }
+
+    @media (max-width: 768px) {
+        .values-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .value-item {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+
+    .value-icon {
+        flex-shrink: 0;
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-inverse);
+        font-size: 1.125rem;
+    }
+
+    .value-content h4 {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 0.25rem;
+    }
+
+    .value-content p {
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+        margin: 0;
+        text-align: left;
+    }
+</style>
+
+<div class="about-card">
+    <div class="about-header">
+        <h1>About Novasyne</h1>
+        <p>Pioneering the Future of Healthcare Technology</p>
+    </div>
+
+    <div class="about-body">
+        <p class="lead">
+            Novasyne is a research-driven technology company based in Brisbane, Australia, pioneering breakthroughs at
+            the intersection of Neuroscience, Mental Health and Artificial Intelligence.
+        </p>
+
+        <p>
+            Founded on the belief that cutting-edge research should translate into real-world solutions, we bridge the
+            gap between academic discovery and practical application in healthcare and neuroscience.
+        </p>
+
+        <p>
+            We envision a future where advanced AI seamlessly integrates into healthcare, providing clinicians and
+            researchers with powerful tools to understand, predict, and treat neurological and mental health conditions.
+            Our research-first approach ensures that every solution we develop is grounded in rigorous scientific
+            methodology and validated through peer-reviewed publications.
+        </p>
+
+        <p>
+            We believe that innovation should be inclusive. We are dedicated to making our tools and services
+            accessible to disadvantaged communities and developing nations, offering them at low or no cost whenever 
+            possible. Our goal is to ensure that the benefits of neuroscience and AI innovation extend beyond borders 
+            and economic barriers.
+        </p>
+
+    </div>
+
+    <div class="about-footer">
+        <a href="https://www.novasyne.com">
+            <img src="{{ url_for('static', filename='novasyne_logo.png') }}" alt="Novasyne Logo">
+        </a>
+    </div>
+</div>
+{% endblock %}

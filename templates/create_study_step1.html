@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block title %}Create Study: Step 1{% endblock %}
+
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<style>
+    #biomarker_table tbody tr:hover {
+        cursor: pointer;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: #20519c !important;
+        border-color: #20519c !important;
+        color: white !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: #0b5ed7 !important;
+        border-color: #0a58ca !important;
+        color: white !important;
+    }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<body data-page-name="create_study_step1">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Create a New Study - Step 1 of 3</h2>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <div class="form-group mb-4">
+                                <select class="form-select" id="study_type_select" name="study_type" required>
+                                    <option value="" disabled selected>-- Select Study Type --</option>
+                                    {% for st in study_types %}
+                                    <option value="{{ st.study_type_id }}">{{ st.category }} - {{ st.study_type }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="mb-3 p-3 border rounded" style="background-color: #f8f9fa;">
+                                <div class="form-check form-switch mb-2">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="ai_enabled"
+                                        name="ai_enabled" value="true">
+                                    <label class="form-check-label" for="ai_enabled"><strong>Enable AI
+                                            Features</strong></label>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="ai_api_key" class="form-label small">OpenAI API Key</label>
+                                    <input type="password" class="form-control form-control-sm" id="ai_api_key"
+                                        name="ai_api_key" disabled>
+                                </div>
+                            </div>
+
+                            <div class="mb-3 p-3 border rounded" style="background-color: #f8f9fa;">
+                                <h6 class="mb-3">Allowed Recording Types</h6>
+                                <div class="form-check">
+                                    <input class="form-check-input data-type-toggle" type="checkbox" id="eeg_enabled"
+                                        name="eeg_enabled" value="true">
+                                    <label class="form-check-label" for="eeg_enabled">EEG Data</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input data-type-toggle" type="checkbox"
+                                        id="wearables_enabled" name="wearables_enabled" value="true">
+                                    <label class="form-check-label" for="wearables_enabled">Wearable Data</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input data-type-toggle" type="checkbox"
+                                        id="biological_enabled" name="biological_enabled" value="true" checked>
+                                    <label class="form-check-label" for="biological_enabled">Biological Samples & Other
+                                        Biomarkers</label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input data-type-filter" type="checkbox" value="true" id="scales_enabled" name="scales_enabled" checked>
+                                    <label class="form-check-label" for="scales_enabled">
+                                        Allow Patient Scales / PROs
+                                    </label>
+                                </div>
+
+                                <div class="mb-3">
+
+                                    <div id="biomarker_table_wrapper"
+                                        style="border-style:solid; border-width:1px; border-color: lightgray;">
+                                        <table class="table table-sm table-hover table-striped" id="biomarker_table">
+                                            <thead>
+                                                <tr style="cursor:pointer">
+                                                    <th style="width: 50px; text-align: center;">
+                                                        <input type="checkbox" id="select_all_biomarkers"
+                                                            title="Select/Deselect All">
+                                                    </th>
+                                                    <th><span aria-hidden="true">&#8597;</span>Biomarker Name</th>
+                                                    <th style="width: 200px;"><span aria-hidden="true">&#8597;</span>Sample Type</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="biomarker_tbody">
+                                            </tbody>
+                                        </table>
+                                        <div id="empty_message" class="text-center text-muted p-4"
+                                            style="display: none;">
+                                            Enable "Biological Samples & Other Biomarkers" to see options
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="d-flex justify-content-end">
+                                <a href="{{ url_for('static', filename='STUDYPRO_Trial_Templates.zip') }}" download class="btn btn-success me-2">
+                                    <i class="bi bi-file-earmark-zip button-icon me-1"></i>Document Pack
+                                </a>
+                                <button type="submit"
+                                
+                                    class="btn btn-primary me-2"><i
+                                        class="bi bi-fast-forward button-icon me-1"></i>Next</button>
+                                <a href="{{ url_for('main_app') }}" class="btn btn-secondary"><i
+                                        class="bi bi-x-circle button-icon me-1"></i>Cancel</a>
+
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+    const allBiomarkers = [
+        {% for b in all_biomarkers %}
+    { id: "{{ b.biomarker_id }}", name: "{{ b.biomarker_name }}", type: "{{ b.sample_type | lower }}", sample_type: "{{ b.sample_type }}" },
+    {% endfor %}
+    ];
+
+    let biomarkerDataTable = null;
+
+    $(document).ready(function () {
+        const aiEnabledCheckbox = document.getElementById('ai_enabled');
+        const aiApiKeyInput = document.getElementById('ai_api_key');
+        const biologicalCheckbox = document.getElementById('biological_enabled');
+        const biomarkerTableWrapper = document.getElementById('biomarker_table_wrapper');
+        const emptyMessage = document.getElementById('empty_message');
+        const selectAllCheckbox = document.getElementById('select_all_biomarkers');
+
+        function updateSelectedCount() {
+            let checkedCount = 0;
+            let totalCount = 0;
+
+            if (biomarkerDataTable) {
+                const allCheckboxes = biomarkerDataTable.rows().nodes().to$().find('.biomarker-checkbox');
+                totalCount = allCheckboxes.length;
+                checkedCount = allCheckboxes.filter(':checked').length;
+            } else {
+                const allCheckboxes = document.querySelectorAll('.biomarker-checkbox');
+                totalCount = allCheckboxes.length;
+                checkedCount = document.querySelectorAll('.biomarker-checkbox:checked').length;
+            }
+
+            if (totalCount > 0) {
+                selectAllCheckbox.checked = checkedCount === totalCount;
+                selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < totalCount;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            }
+        }
+
+        function updateBiomarkerListSimple() {
+            const isEnabled = biologicalCheckbox.checked;
+            const tbody = document.getElementById('biomarker_tbody');
+
+            if (isEnabled) {
+                biomarkerTableWrapper.style.display = 'block';
+                emptyMessage.style.display = 'none';
+
+                tbody.innerHTML = '';
+
+                if (allBiomarkers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted p-3">No biomarkers available in system</td></tr>';
+                    selectAllCheckbox.disabled = true;
+                } else {
+                    allBiomarkers.forEach(biomarker => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td class="text-center">
+                                <input type="checkbox" class="biomarker-checkbox" name="biomarker_types" value="${biomarker.id}">
+                            </td>
+                            <td>${biomarker.name}</td>
+                            <td>${biomarker.sample_type}</td>
+                        `;
+                        row.addEventListener('click', function (e) {
+                            if (e.target.type !== 'checkbox') {
+                                const checkbox = row.querySelector('.biomarker-checkbox');
+                                checkbox.checked = !checkbox.checked;
+                                updateSelectedCount();
+                            }
+                        });
+                        tbody.appendChild(row);
+                    });
+                    selectAllCheckbox.disabled = false;
+                    document.querySelectorAll('.biomarker-checkbox').forEach(cb => {
+                        cb.addEventListener('change', updateSelectedCount);
+                    });
+                }
+            } else {
+                biomarkerTableWrapper.style.display = 'none';
+                emptyMessage.style.display = 'block';
+                selectAllCheckbox.disabled = true;
+                selectAllCheckbox.checked = false;
+            }
+
+            updateSelectedCount();
+        }
+
+        aiEnabledCheckbox.addEventListener('change', function () {
+            if (this.checked) {
+                aiApiKeyInput.disabled = false;
+            } else {
+                aiApiKeyInput.disabled = true;
+                aiApiKeyInput.value = '';
+            }
+        });
+
+        function initializeDataTable() {
+            if (biomarkerDataTable) {
+                biomarkerDataTable.destroy();
+                biomarkerDataTable = null;
+            }
+
+            const tbody = $('#biomarker_table tbody');
+            tbody.empty();
+
+            if (allBiomarkers.length === 0) {
+                tbody.html('<tr><td colspan="3" class="text-center text-muted p-3">No biomarkers available in system</td></tr>');
+                selectAllCheckbox.disabled = true;
+                return;
+            }
+
+            allBiomarkers.forEach(biomarker => {
+                const row = `
+                    <tr>
+                        <td class="text-center">
+                            <input type="checkbox" class="biomarker-checkbox" name="biomarker_types" value="${biomarker.id}" data-biomarker-id="${biomarker.id}">
+                        </td>
+                        <td>${biomarker.name}</td>
+                        <td>${biomarker.sample_type}</td>
+                    </tr>
+                `;
+                tbody.append(row);
+            });
+
+            biomarkerDataTable = $('#biomarker_table').DataTable({
+                order: [[1, 'asc']],
+                searching: false,
+                info: false,
+                lengthChange: false,
+                pageLength: 4,
+                paging: true,
+                columnDefs: [
+                    {
+                        orderable: false,
+                        targets: 0
+                    }
+                ],
+                language: {
+                    emptyTable: "No biomarkers available in system",
+                    paginate: {
+                        first: "First",
+                        last: "Last",
+                        next: "Next",
+                        previous: "Previous"
+                    }
+                },
+                drawCallback: function () {
+                    attachCheckboxListeners();
+                    updateSelectedCount(); 
+                },
+                responsive: true,
+                dom: '<"row mb-3"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-7 d-flex align-items-center"p><"col-sm-12 col-md-5 text-end"i>>'
+            });
+
+            $('#biomarker_table tbody').off('click', 'tr').on('click', 'tr', function (e) {
+                if (e.target.type !== 'checkbox') {
+                    const checkbox = $(this).find('.biomarker-checkbox');
+                    checkbox.prop('checked', !checkbox.prop('checked'));
+                    // We must call updateSelectedCount() after a row click
+                    updateSelectedCount();
+                }
+            });
+
+            selectAllCheckbox.disabled = false;
+        }
+
+        function attachCheckboxListeners() {
+            biomarkerDataTable.$('.biomarker-checkbox').off('change').on('change', updateSelectedCount);
+        }
+
+        function updateBiomarkerList() {
+            const isEnabled = biologicalCheckbox.checked;
+
+            if (isEnabled) {
+                biomarkerTableWrapper.style.display = 'block';
+                emptyMessage.style.display = 'none';
+                initializeDataTable();
+            } else {
+                if (biomarkerDataTable) {
+                    biomarkerDataTable.destroy();
+                    biomarkerDataTable = null;
+                }
+
+                biomarkerTableWrapper.style.display = 'none';
+                emptyMessage.style.display = 'block';
+
+                selectAllCheckbox.disabled = true;
+                selectAllCheckbox.checked = false;
+            }
+
+            updateSelectedCount();
+        }
+
+        selectAllCheckbox.addEventListener('change', function () {
+            const isChecked = this.checked;
+
+            if (biomarkerDataTable) {
+                biomarkerDataTable.rows().nodes().to$().find('.biomarker-checkbox').prop('checked', isChecked);
+                
+            } else {
+                // Fallback for non-datatable list
+                $('.biomarker-checkbox').prop('checked', isChecked);
+            }
+        });
+
+        biologicalCheckbox.addEventListener('change', updateBiomarkerList);
+        // Initial load
+        updateBiomarkerList();
+
+        const form = document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function () {
+                if (biomarkerDataTable) {
+                    $('input.dt-hidden-biomarker').remove();
+
+                    const checkedCheckboxes = biomarkerDataTable.rows().nodes().to$().find('.biomarker-checkbox:checked');
+
+                    checkedCheckboxes.each(function () {
+                        const hiddenInput = $('<input>')
+                            .attr('type', 'hidden')
+                            .attr('name', 'biomarker_types')
+                            .attr('class', 'dt-hidden-biomarker')
+                            .val($(this).val());
+                        $(form).append(hiddenInput);
+                    });
+
+                    biomarkerDataTable.rows().nodes().to$().find('.biomarker-checkbox').prop('disabled', true);
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

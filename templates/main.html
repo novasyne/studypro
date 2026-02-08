@@ -1,0 +1,597 @@
+{% extends "base.html" %}
+
+{% block title %}Main Application - Novasyne{% endblock %}
+
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<style>
+    .dataTables_wrapper .dataTables_length select {
+        padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+        padding: 0.375rem 0.75rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        margin-left: 0.5rem;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: #20519c !important;
+        border-color: #20519c !important;
+        color: white !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: #0b5ed7 !important;
+        border-color: #0a58ca !important;
+        color: white !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<body data-page-name="dashboard">
+    <br/>
+    <div class="container-fluid">
+        <br /><br />
+        {# Welcome message for new users #}
+        {% if not studies_data %}
+        <div class="text-center bg-white p-10 card shadow-sm">
+            <br />
+            <h1 class="text-3xl font-bold text-gray-800 mb-4">Welcome!</h1>
+            <p class="text-xl text-gray-600 mb-8">It looks like you're not part of any studies yet.</p>
+            <div>
+                <div class="mt-8 flex flex-col sm:flex-row justify-center items-center gap-4">
+                    <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal"
+                        data-bs-target="#generateDataModal">
+                        <i class="bi bi-database-fill-gear button-icon me-2"></i>Generate Sample Study
+                    </button>
+                    <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#researchModal">
+                        <i class="bi bi-robot button-icon me-2"></i>Research
+                    </button>
+                    <a href="{{ url_for('create_study_step1') }}" class="btn btn-primary me-2">
+                        <i class="bi bi-file-earmark-plus button-icon me-2"></i>Register Your First Study
+                    </a>
+
+                </div><br /><br />
+            </div>
+        </div>
+
+        {% else %}
+
+        {# Studies table with DataTables #}
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1 class="text-3xl font-bold text-gray-800 mb-0">Your Studies</h1>
+                <div>
+                    <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#researchModal">
+                        <i class="bi bi-robot button-icon me-2"></i>Research
+                    </button>
+                    <a href="{{ url_for('create_study_step1') }}" class="btn btn-primary me-2">
+                        <i class="bi bi-file-earmark-plus button-icon me-2"></i>Register New Study
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div id="table-loader-container" class="text-center p-5 bg-white rounded shadow">
+            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading studies...</span>
+            </div>
+            <h5 class="mt-3">Loading studies...</h5>
+        </div>
+
+        <div class="bg-white rounded shadow p-3" id="table-container" style="visibility: hidden;">
+            <table id="studiesTable" class="table table-hover w-100">
+                <thead class="bg-light">
+                    <tr style="cursor:pointer">
+                        <th class="text-start"><span aria-hidden="true">&#8597;</span> Name</th>
+                        <th class="text-start"><span aria-hidden="true">&#8597;</span> Status</th>
+                        <th class="text-start"><span aria-hidden="true">&#8597;</span> Start Date</th>
+                        <th class="text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Loop through the studies data provided by Flask #}
+                    {% for study in studies_data %}
+                    <tr>
+                        <td class="align-left" data-bs-toggle="tooltip" data-bs-placement="top"
+                            title="{{ study.description }}">
+                            {{ study.name }}
+                        </td>
+                        <td class="align-middle">
+                            <span class="badge bg-secondary">{{ study.status }}</span>
+                        </td>
+                        <td class="align-middle">{{ study.start_date or 'N/A' }}</td>
+                        <td class="align-middle text-center">
+                            <a href="{{ url_for('edit_study', study_id=study.study_id) }}" class="btn btn-sm btn-info">
+                                <i class="bi bi-clipboard-pulse button-icon me-1"></i>Go To
+                            </a>
+                            <a href="{{ url_for('study_dashboard', study_id=study.study_id) }}"
+                                class="btn btn-sm btn-info status-link-btn">
+                                <i class="bi bi-bar-chart-line button-icon me-1"></i>
+                                Dashboard
+                            </a>
+                            <a href="{{ url_for('analytics', study_id=study.study_id) }}" class="btn btn-sm btn-info">
+                                <i class="bi bi-graph-up-arrow button-icon me-1"></i>Analytics
+                            </a>
+                            <a href="#" class="btn btn-sm btn-info" data-bs-toggle="modal"
+                                data-bs-target="#documentsModal" data-study-id="{{ study.study_id }}"
+                                data-study-name="{{ study.name }}">
+                                <i class="bi bi-file-earmark-text  me-1"></i> Documents
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% endif %}
+    </div>
+
+    <!-- API Key Missing Modal -->
+<div class="modal fade" id="apiKeyMissingModal" tabindex="-1" aria-labelledby="apiKeyMissingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning-subtle">
+                <h5 class="modal-title" id="apiKeyMissingModalLabel">
+                    <i class="bi bi-exclamation-triangle-fill text-warning me-2"></i>API Key Required
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">Please configure an API Key on either the <strong>Study Settings</strong> or your <strong>User Account</strong>.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+    <div class="modal fade" id="researchModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-light">
+                    <h5 class="modal-title text-primary">
+                        <i class="bi bi-robot me-2"></i>Clinical Research Assistant
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">
+                        Ask questions about market trends, enrollment benchmarks, or historical data. 
+                        <em>(e.g., "What is the typical enrollment duration for a Phase 3 diabetes study?")</em>
+                    </p>
+                    
+                    <div class="input-group mb-4">
+                        <input type="text" id="researchQuery" class="form-control" placeholder="Ask a question about clinical trials...">
+                        <button class="btn btn-primary" type="button" id="btnRunResearch">
+                            <i class="bi bi-search me-1"></i> Search
+                        </button>
+                    </div>
+
+                    <div id="researchLoader" class="text-center py-4 d-none">
+                        <div class="spinner-border text-primary mb-2" role="status"></div>
+                        <p class="text-muted blink">Analyzing ClinicalTrials.gov data...</p>
+                    </div>
+
+                    <div id="researchResults" class="d-none">
+                        <div class="alert alert-light border border-info mb-3">
+                            <i class="bi bi-stars text-warning me-2"></i>
+                            <span id="researchText" class="text-dark fw-medium"></span>
+                        </div>
+                        
+                        <div class="card shadow-sm">
+                            <div class="card-body p-2">
+                                <div id="researchPlotContainer" style="min-height: 320px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="generateDataModal" tabindex="-1" aria-labelledby="generateDataModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="generateDataModalLabel">Generate Example Data</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="generateDataForm" action="{{ url_for('generate_demo_data') }}" method="POST">
+                        <div class="mb-3">
+                            <label for="studyTypeSelect" class="form-label">Select Example Study Type:</label>
+                            <select class="form-select" id="studyTypeSelect" name="study_type" required>
+                                <option value="" selected disabled>Choose a study type...</option>
+                                <option value="rct">Randomized Controlled Trial (RCT)</option>
+                                <option value="cohort">Cohort Study</option>
+                                <option value="case-control">Case-Control Study</option>
+                                <option value="food_sensory">Food Sensory</option>
+                            </select>
+                        </div>
+                        <p class="text-muted"><small>This will generate a complete study with fictional cohorts,
+                                subjects, and data recordings based on the selected template.</small></p>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="generateDataSubmitBtn"><i
+                            class="bi bi-database-fill-gear button-icon me-1"></i>Generate</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Close</button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="documentsModal" tabindex="-1" aria-labelledby="documentsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="documentsModalLabel">Documents</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+
+                    <h6 class="mb-3">Attached Documents</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Description</th>
+                                    <th>Uploaded</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="documentListBody">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h6><i class="bi bi-upload"></i> Upload New Document</h6>
+                    <form id="uploadDocForm" method="POST" enctype="multipart/form-data"
+                        class="mt-3 p-3 bg-light border rounded">
+                        <div class="mb-3">
+                            <label for="docDescription" class="form-label">Description <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="docDescription" name="description" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="docFile" class="form-label">File <span class="text-danger">*</span></label>
+                            <input class="form-control" type="file" id="docFile" name="document" required>
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary"><i
+                                    class="bi bi-file-earmark-arrow-up button-icon me-1"></i>Upload Document</button>
+                        </div>
+                    </form>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.8.0.min.js"></script>
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-api-3.8.0.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+        const btnRun = document.getElementById('btnRunResearch');
+        const inputQuery = document.getElementById('researchQuery');
+        const loader = document.getElementById('researchLoader');
+        const resultsArea = document.getElementById('researchResults');
+        const textSummary = document.getElementById('researchText');
+        
+
+btnRun.addEventListener('click', function() {
+    const query = inputQuery.value.trim();
+    if(!query) return;
+
+    // UI Reset
+    loader.classList.remove('d-none');
+    resultsArea.classList.add('d-none');
+    textSummary.textContent = '';
+    document.getElementById('researchPlotContainer').innerHTML = '';
+    btnRun.disabled = true;
+
+    fetch('/api/research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query })
+    })
+    .then(response => response.json())
+    .then(data => {
+        loader.classList.add('d-none');
+        btnRun.disabled = false;
+
+        if (data.error) {
+            if (data.error === 'API_KEY_MISSING') {
+                // Close the research modal first
+                var researchModalEl = document.getElementById('researchModal');
+                var researchModal = bootstrap.Modal.getInstance(researchModalEl);
+                if (researchModal) {
+                    researchModal.hide();
+                }
+                // Show the API key missing modal
+                var apiKeyModal = new bootstrap.Modal(document.getElementById('apiKeyMissingModal'));
+                apiKeyModal.show();
+            } else {
+                alert('Error: ' + data.error);
+            }
+            return;
+        }
+
+        resultsArea.classList.remove('d-none');
+        
+        // 1. Typewriter effect for text
+        const text = data.summary;
+        let i = 0;
+        function typeWriter() {
+            if (i < text.length) {
+                textSummary.textContent += text.charAt(i);
+                i++;
+                setTimeout(typeWriter, 15);
+            }
+        }
+        typeWriter();
+
+        // 2. Embed Bokeh Plot
+        if(data.plot) {
+            try {
+                const plotData = JSON.parse(data.plot);
+                requestAnimationFrame(() => {
+                    Bokeh.embed.embed_item(plotData, "researchPlotContainer");
+                });
+            } catch(e) {
+                console.error("Bokeh plot error:", e);
+            }
+        }
+    })
+    .catch(err => {
+        loader.classList.add('d-none');
+        btnRun.disabled = false;
+        console.error(err);
+        alert("An error occurred while fetching research data.");
+    });
+});
+
+        // Allow Enter key to trigger search
+        inputQuery.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                btnRun.click();
+            }
+        });
+    });
+
+    $(document).ready(function () {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl)
+        })
+        $('.status-link-btn').on('click', function () {
+            var $this = $(this);
+            $this.addClass('disabled');
+
+            var $textSpan = $this.find('.button-text');
+            var $icon = $this.find('.button-icon');
+
+            if ($icon.length > 0) {
+                $icon.removeClass().addClass('spinner-border spinner-border-sm');
+                if ($textSpan.length > 0) {
+                    $textSpan.text(' Loading...');
+                }
+            } else if ($textSpan.length > 0) {
+                $textSpan.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...');
+            } else {
+                $this.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...');
+            }
+            return true;
+        });
+        $(window).on('pageshow', function (event) {
+            if (event.originalEvent && event.originalEvent.persisted) {
+                $('.status-link-btn').each(function () {
+                    var $this = $(this);
+                    $this.removeClass('disabled');
+
+                    var $textSpan = $this.find('.button-text');
+                    var $spinner = $this.find('.spinner-border');
+                    if ($spinner.length > 0) {
+                        $spinner.removeClass('spinner-border spinner-border-sm').addClass('bi bi-bar-chart-line button-icon');
+                    }
+                    if ($textSpan.length > 0) {
+                        $textSpan.text('Status');
+                    }
+                });
+            }
+        });
+        $('#studiesTable').DataTable({
+            order: [[0, 'asc']],
+            searching: false,
+            info: false,
+            lengthChange: false,
+
+            pageLength: 25,
+            language: {
+                search: "Search studies:",
+                lengthMenu: "Show _MENU_ studies per page",
+                info: "Showing _START_ to _END_ of _TOTAL_ studies",
+                infoEmpty: "No studies available",
+                infoFiltered: "(filtered from _MAX_ total studies)",
+                zeroRecords: "No matching studies found",
+                paginate: {
+                    first: "First",
+                    last: "Last",
+                    next: "Next",
+                    previous: "Previous"
+                }
+            },
+            columnDefs: [
+                {
+                    orderable: false,
+                    targets: 3
+                },
+                {
+                    targets: 1,
+                    orderSequence: ['asc', 'desc']
+                }
+            ],
+            initComplete: function () {
+                $('#table-loader-container').hide();
+                $('#table-container').css('visibility', 'visible');
+            },
+            responsive: true,
+            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip'
+        });
+
+        const generateDataSubmitBtn = document.getElementById('generateDataSubmitBtn');
+        const generateDataForm = document.getElementById('generateDataForm');
+
+        if (generateDataSubmitBtn && generateDataForm) {
+            generateDataSubmitBtn.addEventListener('click', function () {
+                const selectedType = generateDataForm.querySelector('#studyTypeSelect').value;
+
+                if (!selectedType) {
+                    alert('Please select a study type to generate.');
+                    return;
+                }
+                generateDataSubmitBtn.disabled = true;
+                generateDataSubmitBtn.innerHTML = `
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                    Generating...
+                `;
+                generateDataForm.submit();
+            });
+        }
+
+
+        const documentsModal = document.getElementById('documentsModal');
+        const uploadForm = document.getElementById('uploadDocForm');
+        const documentListBody = document.getElementById('documentListBody');
+        let currentStudyId = null;
+
+        function refreshDocumentList(studyId) {
+            documentListBody.innerHTML = '<tr><td colspan="4" class="text-center"><em>Loading...</em></td></tr>';
+
+            fetch(`/study/${studyId}/documents`)
+                .then(response => response.json())
+                .then(data => {
+                    documentListBody.innerHTML = '';
+                    if (data.length === 0) {
+                        documentListBody.innerHTML = '<tr><td colspan="4" class="text-center"><em>No documents have been attached.</em></td></tr>';
+                    } else {
+                        data.forEach(doc => {
+                            const row = `
+                            <tr id="doc-row-${doc.document_id}">
+                                <td class="align-middle">${doc.filename}</td>
+                                <td class="align-middle">${doc.description}</td>
+                                <td class="align-middle">${doc.upload_date}</td>
+                                <td class="text-end">
+                                    <a href="${doc.download_url}" class="btn btn-sm btn-success">Download</a>
+                                    <button class="btn btn-sm btn-danger delete-doc-btn" data-doc-id="${doc.document_id}" data-delete-url="${doc.delete_url}">Delete</button>
+                                </td>
+                            </tr>
+                        `;
+                            documentListBody.insertAdjacentHTML('beforeend', row);
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching documents:', error);
+                    documentListBody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Failed to load documents.</td></tr>';
+                });
+        }
+
+        documentsModal.addEventListener('show.bs.modal', event => {
+            const button = event.relatedTarget;
+            currentStudyId = button.getAttribute('data-study-id');
+            const studyName = button.getAttribute('data-study-name');
+            documentsModal.querySelector('.modal-title').textContent = `Documents for: ${studyName}`;
+            uploadForm.action = `/study/${currentStudyId}/upload`;
+            refreshDocumentList(currentStudyId);
+        });
+
+        uploadForm.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const formData = new FormData(uploadForm);
+            const actionUrl = uploadForm.action;
+            const submitButton = uploadForm.querySelector('button[type="submit"]');
+
+            submitButton.disabled = true;
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Uploading...';
+
+            fetch(actionUrl, {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        uploadForm.reset();
+                        refreshDocumentList(currentStudyId);
+                    } else {
+                        alert('Upload failed: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Upload error:', error);
+                    alert('An unexpected error occurred during upload. Please try again.');
+                })
+                .finally(() => {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = 'Upload Document';
+                });
+        });
+
+        documentsModal.addEventListener('click', function (event) {
+            if (event.target.classList.contains('delete-doc-btn')) {
+                const deleteBtn = event.target;
+                const docId = deleteBtn.getAttribute('data-doc-id');
+                const deleteUrl = deleteBtn.getAttribute('data-delete-url');
+
+                if (confirm('Are you sure you want to permanently delete this document?')) {
+                    fetch(deleteUrl, { method: 'POST' })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.status === 'success') {
+                                document.getElementById(`doc-row-${docId}`).remove();
+                                if (documentListBody.children.length === 0) {
+                                    documentListBody.innerHTML = '<tr><td colspan="4" class="text-center"><em>No documents have been attached.</em></td></tr>';
+                                }
+                            } else {
+                                alert('Error: ' + data.message);
+                            }
+                        })
+                        .catch(error => console.error('Deletion error:', error));
+                }
+            }
+        });
+    });
+
+    
+</script>
+{% endblock %}

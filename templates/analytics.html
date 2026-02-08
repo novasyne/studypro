@@ -1,0 +1,930 @@
+{% extends "base.html" %}
+
+{% block title %}Study Analytics - {{ study.name }}{% endblock %}
+
+{% block head %}
+{{ super() }}
+
+{# Add Bokeh CDN Links #}
+<link href="https://cdn.bokeh.org/bokeh/release/bokeh-3.8.0.min.css" rel="stylesheet" type="text/css">
+<link href="https://cdn.bokeh.org/bokeh/release/bokeh-widgets-3.8.0.min.css" rel="stylesheet" type="text/css">
+
+<style>
+    #analysisResultModalBody {
+        min-height: 400px;
+    }
+
+    #modalLoadingSpinner {
+        width: 5rem;
+        height: 5rem;
+    }
+
+    #knowledgeFileList {
+        max-height: 300px;
+        overflow-y: scroll;
+        overflow-x: hidden;
+    }
+
+    .bokeh-chart-container .bk-root {
+        min-height: 400px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<body data-page-name="analytics">
+    <br/><br/>
+    <div class="container-fluid">
+        <div class="row">
+
+            <div class="col-lg-10 offset-lg-1">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-light">
+                        <h4 class="mb-0 text-dark">
+                            Study Analytics for {{ study.name }}
+                        </h4>
+                    </div>
+                    <div class="card-body">
+                        <p>Select an analysis type and biomarker(s) to generate plots and statistical summaries.</p>
+
+                        <form id="analyticsForm">
+
+                            <div class="mb-3">
+                                <label for="analysisTypeSelect" class="form-label fw-bold">1. Analysis Type</label>
+                                <select class="form-select" style="width:300px" id="analysisTypeSelect" required>
+                                    <option value="" selected disabled>-- Please select an analysis --</option>
+
+                                    <optgroup label="Biomarker (Numerical) Analysis">
+                                        <option value="cohort_comparison">Cohort Comparison</option>
+                                        <option value="subject_over_time">Subject Analysis Over Time</option>
+                                        <option value="distribution">Data Distribution</option>
+                                        <option value="correlation_matrix">Correlation Analysis</option>
+                                        <option value="comprehensive_correlation">Comprehensive Correlation</option>
+                                        {% if ai_available %}
+                                        <option value="automated_analysis">Automated Analysis (AI)</option>
+                                        {% endif %}
+                                    </optgroup>
+
+                                    <optgroup label="Categorical & Frequency Analysis">
+                                        <option value="demographics_summary">Demographics Summary</option>
+                                        <option value="event_frequency">Event/Symptom Frequency</option>
+                                        <option value="medication_frequency">Concomitant Medication Frequency</option>
+                                        <option value="cohort_distribution_report">Cohort Distribution Report</option>
+                                    </optgroup>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="biomarkerSelect" class="form-label fw-bold">2. Biomarker(s)</label>
+                                <select class="form-select" id="biomarkerSelect" multiple size="5">
+                                    {% for b in biomarkers %}
+                                    <option value="{{ b.biomarker_id }}">{{ b.biomarker_name }} ({{ b.sample_type }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                <div id="biomarkerHelpText" class="form-text">Please select an analysis type first.
+                                </div>
+                            </div>
+
+                            <div class="mb-3 p-3 bg-light rounded border" id="dynamicOptionsContainer"
+                                style="display: none;">
+                                <h6 class="fw-bold">3. Analysis Options</h6>
+
+                                <div id="cohortOptions" style="display: none;">
+                                    <div class="mb-3">
+                                        <label for="cohortSelect" class="form-label">Select Cohorts</label>
+                                        <select class="form-select" id="cohortSelect" multiple size="5">
+                                            {% for c in arms %}
+                                            <option value="{{ c.arm_id }}">{{ c.arm_name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="form-text">
+                                            Select cohorts to compare. <br>
+                                            - T-Test / Mann-Whitney U requires exactly 2 cohorts. <br>
+                                            - ANOVA / Kruskal-Wallis requires 2 or more cohorts. <br>
+                                            Use Mann-Whitney U or Kruskal-Wallis if data may not be normally
+                                            distributed.
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="cohortTestSelect" class="form-label">Select Analysis / Plot</label>
+                                        <select class="form-select" id="cohortTestSelect">
+                                            <optgroup label="Plots">
+                                                <option value="box_plot">Box Plot</option>
+                                                <option value="violin_plot">Density Plot (Violin)</option>
+                                            </optgroup>
+                                            <optgroup label="Statistical Tests (Parametric)">
+                                                <option value="t_test">Independent T-Test (2 Cohorts)</option>
+                                                <option value="anova">ANOVA (>2 Cohorts)</option>
+                                            </optgroup>
+                                            <optgroup label="Statistical Tests (Non-Parametric)">
+                                                <option value="mannwhitneyu">Mann-Whitney U Test (2 Cohorts)</option>
+                                                <option value="kruskalwallis">Kruskal-Wallis Test (>2 Cohorts)</option>
+                                            </optgroup>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="subjectOptions" style="display: none;">
+                                    <div class="mb-3">
+                                        <label for="subjectSelect" class="form-label">Select Subjects</label>
+                                        <select class="form-select" id="subjectSelect" multiple size="8">
+                                            {% for s in subjects %}
+                                            <option value="{{ s.external_subject_code }}">{{ s.external_subject_code }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="subjectPlotSelect" class="form-label">Select Plot Type</label>
+                                        <select class="form-select" id="subjectPlotSelect">
+                                            <option value="line_plot">Line Plot</option>
+                                            <option value="scatter_plot">Scatter Plot</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="distributionOptions" style="display: none;">
+                                    <div class="mb-3">
+                                        <label for="distributionPlotSelect" class="form-label">Select Plot Type</label>
+                                        <select class="form-select" id="distributionPlotSelect">
+                                            <option value="histogram">Histogram</option>
+                                            <option value="density_plot">Density Plot</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="correlationOptions" style="display: none;">
+                                    <div class="mb-3">
+                                        <label for="correlationCohortSelect" class="form-label">Select Cohorts to
+                                            Include</label>
+                                        <select class="form-select" id="correlationCohortSelect" multiple size="5">
+                                            {% for c in arms %}
+                                            <option value="{{ c.arm_id }}">{{ c.arm_name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="form-text">Select one or more cohorts to include. If none are
+                                            selected, all subjects with data will be used.</div>
+                                    </div>
+                                </div>
+                                <div id="automatedOptions" style="display: none;">
+
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-info ms-0" id="knowledgeBtn"
+                                            style="display: none;" data-bs-toggle="modal"
+                                            data-bs-target="#knowledgeModal">
+                                            <i class="bi bi-robot me-1"></i>Knowledge Base</button>
+                                    </div>
+                                </div>
+
+                                <div id="demographicsOptions" style="display: none;">
+                                    <div class="mb-3">
+                                        <label for="demographicsFieldSelect" class="form-label">Select Demographic
+                                            Field</label>
+                                        <select class="form-select" id="demographicsFieldSelect">
+                                            <option value="" selected disabled>-- Select a field --</option>
+                                            <option value="gender">Gender</option>
+                                            <option value="ethnicity">Ethnicity</option>
+                                            <option value="race">Race</option>
+                                            <option value="handedness">Handedness</option>
+                                            <option value="smoking_status">Smoking Status</option>
+                                            <option value="alcohol_intake">Alcohol Intake</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div id="eventOptions" style="display: none;">
+                                    <div class="mb-3">
+                                        <label for="eventFieldSelect" class="form-label">Select Event Type</label>
+                                        <select class="form-select" id="eventFieldSelect">
+                                            <option value="" selected disabled>-- Select a type --</option>
+                                            <option value="Adverse Event">Adverse Events</option>
+                                            <option value="Symptom">Symptoms</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div id="medicationOptions" style="display: none;">
+                                    <p class="text-muted">This analysis will count the frequency of all logged
+                                        concomitant medications.</p>
+                                </div>
+                                <div id="cohortDistributionOptions" style="display: none;">
+                                    <p class="text-muted">This analysis generates a report comparing the distribution of baseline demographics, diagnosis history, and medication history across all cohorts in the study.</p>
+                                </div>
+
+                                <div id="cohortFilterOptions" style="display: none;">
+                                    <hr>
+                                    <div class="mb-3">
+                                        <label for="filterCohortSelect" class="form-label">Filter by Cohorts
+                                            (Optional)</label>
+                                        <select class="form-select" id="filterCohortSelect" multiple size="5">
+                                            {% for c in arms %}
+                                            <option value="{{ c.arm_id }}">{{ c.arm_name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <div class="form-text">If no cohorts are selected, the analysis will run on all
+                                            subjects in the study.</div>
+                                    </div>
+                                </div>
+
+                            </div>
+
+                            <div class="text-end">
+                                <button type="submit" id="runAnalysisBtn" class="btn btn-primary" disabled>
+                                    <i class="bi bi-building-gear button-icon me-1"></i>Run Analysis
+                                </button>
+                                <a href="{{ url_for('main_app', study_id=study.study_id) }}"
+                                    class="btn btn-secondary me-2"><i
+                                        class="bi bi-x-circle button-icon me-1"></i>Close</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="analysisResultModal" tabindex="-1" aria-labelledby="analysisResultModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"
+            style="max-width:60%; max-height:60%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="analysisResultModalLabel">Analysis Result</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="analysisResultModalBody">
+                    <div id="modalLoadingSpinner" class="d-flex justify-content-center align-items-center"
+                        style="min-height: 400px;">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="knowledgeModal" tabindex="-1" aria-labelledby="knowledgeModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="knowledgeModalLabel">
+                        <i class="bi bi-robot me-1"></i> Manage AI Knowledge Base
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="knowledgeAlertPlaceholder"></div>
+
+                    <h6><i class="bi bi-file-earmark-text me-1"></i>Stored Documents</h6>
+                    <div class="border rounded p-2" id="knowledgeFileListContainer">
+
+                        <div id="knowledgeFileSpinner" class="d-flex justify-content-center align-items-center"
+                            style="display: none;">
+                            <div id="knowledgeSpinnerInner" class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+
+                        <ul class="list-group" id="knowledgeFileList" style="display: none;">
+                        </ul>
+                    </div>
+
+                    <h6 class="mt-4"><i class="bi bi-file-earmark-arrow-up me-1"></i>Upload New Files</h6>
+                    <div class="mb-3 p-3 border rounded bg-light">
+                        <div class="input-group">
+                            <input class="form-control" type="file" id="knowledgeFilesUpload" multiple accept=".pdf">
+                            <button class="btn btn-primary" type="button" id="knowledgeUploadBtn">
+                                <span id="knowledgeUploadSpinner" class="spinner-border spinner-border-sm me-1"
+                                    role="status" aria-hidden="true" style="display: none;"></span>
+                                <i id="knowledgeUploadIcon" class="bi bi-file-earmark-arrow-up me-1"></i>Upload
+                            </button>
+                        </div>
+                    </div>
+
+                    <p class="form-text">
+                        Click "Build" to generate a new or update an existing knowledge base.
+                    </p>
+
+                </div>
+                <div class="modal-footer">
+
+                    <button type="button" class="btn btn-primary" id="knowledgeBuildBtn">
+                        <span id="knowledgeBuildBtnSpinner" class="spinner-border spinner-border-sm me-1"
+                            style="display: none;" role="status" aria-hidden="true"></span>
+                        <i id="knowledgeBuildBtnIcon" class="bi bi-bricks me-1"></i>
+                        <span id="knowledgeBuildBtnText">Build</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="knowledgeCancelBtn"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteKnowledgeConfirmModal" tabindex="-1" aria-labelledby="deleteModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"><i
+                            class="bi bi-x-circle"></i></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete the file: <strong id="fileNameToDelete"></strong>?</p>
+                    <p class="text-danger">This action cannot be undone. You will need to rebuild the knowledge base
+                        after deletion.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                        <span id="deleteSpinner" class="spinner-border spinner-border-sm" role="status"
+                            aria-hidden="true" style="display: none;"></span>
+                        <i class="bi bi-trash button-icon me-1"></i>Yes, Delete
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Cancel</button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="buildCompleteModal" tabindex="-1" aria-labelledby="buildCompleteModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="buildCompleteModalLabel">
+                        <i class="bi bi-check-circle-fill text-success me-2"></i>Build Complete
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"><i
+                            class="bi bi-x-circle"></i></button>
+                </div>
+                <div class="modal-body">
+                    <p>The knowledge base has been successfully built.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal"><i
+                            class="bi bi-check button-icon me-1"></i>OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+
+{# ADDED Bokeh JS CDN Links #}
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.8.0.min.js"></script>
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-widgets-3.8.0.min.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const studyId = "{{ study.study_id }}";
+        const analyticsForm = document.getElementById('analyticsForm');
+        const biomarkerSelect = document.getElementById('biomarkerSelect');
+        const analysisTypeSelect = document.getElementById('analysisTypeSelect');
+        const runAnalysisBtn = document.getElementById('runAnalysisBtn');
+        const biomarkerHelpText = document.getElementById('biomarkerHelpText');
+
+        const dynamicOptionsContainer = document.getElementById('dynamicOptionsContainer');
+        const cohortOptions = document.getElementById('cohortOptions');
+        const subjectOptions = document.getElementById('subjectOptions');
+        const distributionOptions = document.getElementById('distributionOptions');
+        const correlationOptions = document.getElementById('correlationOptions');
+        const automatedOptions = document.getElementById('automatedOptions');
+        const knowledgeBtn = document.getElementById('knowledgeBtn');
+
+        const cohortDistributionOptions = document.getElementById('cohortDistributionOptions');
+
+        const demographicsOptions = document.getElementById('demographicsOptions');
+        const eventOptions = document.getElementById('eventOptions');
+        const medicationOptions = document.getElementById('medicationOptions');
+        const cohortFilterOptions = document.getElementById('cohortFilterOptions');
+
+        const analysisModal = new bootstrap.Modal(document.getElementById('analysisResultModal'));
+        const modalBody = document.getElementById('analysisResultModalBody');
+        const modalTitle = document.getElementById('analysisResultModalLabel');
+        const modalSpinner = document.getElementById('modalLoadingSpinner');
+        const modalElement = document.getElementById('analysisResultModal');
+        const knowledgeModalElement = document.getElementById('knowledgeModal');
+        const knowledgeModal = new bootstrap.Modal(knowledgeModalElement);
+        const knowledgeFileList = document.getElementById('knowledgeFileList');
+        const knowledgeFileSpinner = document.getElementById('knowledgeFileSpinner');
+        const knowledgeSpinnerInner = document.getElementById('knowledgeSpinnerInner');
+        const knowledgeFilesUpload = document.getElementById('knowledgeFilesUpload');
+        const knowledgeUploadBtn = document.getElementById('knowledgeUploadBtn');
+        const knowledgeBuildBtn = document.getElementById('knowledgeBuildBtn');
+        const knowledgeBuildBtnSpinner = document.getElementById('knowledgeBuildBtnSpinner');
+        const knowledgeBuildBtnIcon = document.getElementById('knowledgeBuildBtnIcon');
+        const knowledgeBuildBtnText = document.getElementById('knowledgeBuildBtnText');
+        const knowledgeAlertPlaceholder = document.getElementById('knowledgeAlertPlaceholder');
+        const knowledgeUploadSpinner = document.getElementById('knowledgeUploadSpinner');
+        const knowledgeUploadIcon = document.getElementById('knowledgeUploadIcon');
+        const deleteKnowledgeConfirmModal = new bootstrap.Modal(document.getElementById('deleteKnowledgeConfirmModal'));
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const deleteSpinner = document.getElementById('deleteSpinner');
+        const fileNameToDelete = document.getElementById('fileNameToDelete');
+        let knowledgeIdToDelete = null;
+        let listItemToDelete = null;
+        const buildCompleteModal = new bootstrap.Modal(document.getElementById('buildCompleteModal'));
+        let plotDataToRender = null;
+        let isKnowledgeBuilding = false;
+        const cohortTestSelect = document.getElementById('cohortTestSelect');
+        const subjectPlotSelect = document.getElementById('subjectPlotSelect');
+        const distributionPlotSelect = document.getElementById('distributionPlotSelect');
+        const demographicsFieldSelect = document.getElementById('demographicsFieldSelect');
+        const eventFieldSelect = document.getElementById('eventFieldSelect');
+
+        modalElement.addEventListener('shown.bs.modal', function () {
+            if (plotDataToRender) {
+                try {
+                    Bokeh.embed.embed_item(plotDataToRender);
+                } catch (e) {
+                    console.error("Bokeh embed failed:", e);
+                    if (modalBody) modalBody.innerHTML = `<div class="alert alert-danger">Error rendering plot: ${e.message}</div>`;
+                }
+                plotDataToRender = null;
+            }
+        });
+
+        modalElement.addEventListener('hidden.bs.modal', function () {
+            plotDataToRender = null;
+            if (modalBody) modalBody.innerHTML = '';
+            if (modalSpinner) modalBody.appendChild(modalSpinner);
+        });
+
+        function showKnowledgeAlert(message, type = 'danger') {
+            if (knowledgeAlertPlaceholder) {
+                knowledgeAlertPlaceholder.innerHTML =
+                    `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+                    ${message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>`;
+            }
+        }
+
+        async function loadKnowledgeFiles() {
+            if (knowledgeFileSpinner) {
+                knowledgeFileSpinner.style.display = 'flex';
+            }
+            if (knowledgeSpinnerInner) {
+                knowledgeSpinnerInner.classList.add('spinner-border');
+            }
+            if (knowledgeFileList) {
+                knowledgeFileList.style.display = 'none';
+            }
+            if (knowledgeFileList) {
+                knowledgeFileList.innerHTML = '';
+            }
+            if (knowledgeAlertPlaceholder) {
+                knowledgeAlertPlaceholder.innerHTML = '';
+            }
+            try {
+                const response = await fetch(`/api/study/${studyId}/knowledge_files`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch file list.');
+                }
+                const files = await response.json();
+
+                if (files.length === 0) {
+                    if (knowledgeFileList) {
+                        knowledgeFileList.innerHTML = '<li class="list-group-item text-muted">No files uploaded.</li>';
+                    }
+                } else {
+                    files.forEach(file => {
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        const filename = file.filename || 'Unnamed File';
+                        const knowledgeId = file.knowledge_id || '';
+                        li.dataset.filename = filename;
+                        const maxLen = 60;
+                        const displayName = filename.length > maxLen ?
+                            filename.substring(0, maxLen) + '...' :
+                            filename;
+                        li.dataset.knowledgeId = knowledgeId;
+                        li.innerHTML = `
+                            <span>
+                                <i class="bi bi-file-earmark-pdf me-2"></i>
+                                ${displayName}
+                            </span>
+                            <button class="btn btn-sm btn-danger">
+                                <i class="bi bi-trash button-icon me-1"></i>Remove
+                            </button>
+                        `;
+
+                        if (knowledgeFileList) {
+                            knowledgeFileList.appendChild(li);
+                        }
+                    });
+                }
+            } catch (error) {
+                if (knowledgeAlertPlaceholder) {
+                    showKnowledgeAlert(`Error loading files: ${error.message}`);
+                } else {
+                    console.error(`Error loading files: ${error.message}`);
+                }
+            } finally {
+                if (knowledgeSpinnerInner) {
+                    knowledgeSpinnerInner.classList.remove('spinner-border');
+                }
+                if (knowledgeFileSpinner) {
+                    knowledgeFileSpinner.style.display = 'none';
+                }
+                if (knowledgeFileList) {
+                    knowledgeFileList.style.display = 'block';
+                    knowledgeFileList.style.maxHeight = '300px';
+                    knowledgeFileList.style.overflowY = 'scroll';
+                    knowledgeFileList.style.overflowX = 'hidden';
+                }
+            }
+        }
+        if (knowledgeFileList) {
+            knowledgeFileList.addEventListener('click', (e) => {
+                const deleteBtn = e.target.closest('.btn-danger');
+                if (deleteBtn) {
+                    listItemToDelete = deleteBtn.closest('li');
+                    if (listItemToDelete) {
+                        knowledgeIdToDelete = listItemToDelete.dataset.knowledgeId;
+                        const filename = listItemToDelete.dataset.filename;
+                        if (fileNameToDelete) {
+                            fileNameToDelete.textContent = filename;
+                        }
+                        deleteKnowledgeConfirmModal.show();
+                    }
+                }
+            });
+        }
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', async () => {
+                if (!knowledgeIdToDelete || !listItemToDelete) return;
+                confirmDeleteBtn.disabled = true;
+                if (deleteSpinner) {
+                    deleteSpinner.style.display = 'inline-block';
+                }
+                try {
+                    const response = await fetch(`/api/knowledge/${knowledgeIdToDelete}`, { method: 'DELETE' });
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(result.message || 'Server error');
+                    }
+                    showKnowledgeAlert(result.message, 'success');
+                    listItemToDelete.remove(); // Remove from UI
+                    if (knowledgeFileList && knowledgeFileList.children.length === 0) {
+                        knowledgeFileList.innerHTML = '<li class="list-group-item text-muted">No files uploaded.</li>';
+                    }
+                } catch (error) {
+                    showKnowledgeAlert(`Error: ${error.message}`);
+                } finally {
+                    confirmDeleteBtn.disabled = false;
+                    if (deleteSpinner) {
+                        deleteSpinner.style.display = 'none';
+                    }
+                    deleteKnowledgeConfirmModal.hide();
+                    knowledgeIdToDelete = null;
+                    listItemToDelete = null;
+                }
+            });
+        }
+        if (knowledgeUploadBtn) {
+            knowledgeUploadBtn.addEventListener('click', async () => {
+                if (!knowledgeFilesUpload) return;
+
+                const files = knowledgeFilesUpload.files;
+                if (files.length === 0) {
+                    showKnowledgeAlert('Please select one or more PDF files to upload.', 'warning');
+                    return;
+                }
+                const formData = new FormData();
+                for (const file of files) {
+                    formData.append('files', file);
+                }
+                knowledgeUploadBtn.disabled = true;
+                if (knowledgeUploadSpinner) knowledgeUploadSpinner.style.display = 'inline-block';
+                if (knowledgeUploadIcon) knowledgeUploadIcon.style.display = 'none';
+                try {
+                    const response = await fetch(`/api/study/${studyId}/knowledge_upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(result.message || 'Upload failed');
+                    }
+                    showKnowledgeAlert(result.message, 'success');
+                    knowledgeFilesUpload.value = '';
+                    await loadKnowledgeFiles();
+                } catch (error) {
+                    showKnowledgeAlert(`Upload Error: ${error.message}`);
+                } finally {
+                    knowledgeUploadBtn.disabled = false;
+                    if (knowledgeUploadSpinner) knowledgeUploadSpinner.style.display = 'none';
+                    if (knowledgeUploadIcon) knowledgeUploadIcon.style.display = 'inline-block';
+                }
+            });
+        }
+        if (knowledgeBuildBtn) {
+            knowledgeBuildBtn.addEventListener('click', async () => {
+                isKnowledgeBuilding = true;
+                knowledgeBuildBtn.disabled = true;
+                if (knowledgeBuildBtnSpinner) knowledgeBuildBtnSpinner.style.display = 'inline-block';
+                if (knowledgeBuildBtnIcon) knowledgeBuildBtnIcon.style.display = 'none';
+                if (knowledgeBuildBtnText) knowledgeBuildBtnText.textContent = ' Building...';
+                if (knowledgeAlertPlaceholder) knowledgeAlertPlaceholder.innerHTML = '';
+                try {
+                    const response = await fetch(`/api/study/${studyId}/build_knowledge_vectors`, { method: 'POST' });
+                    const result = await response.json();
+                    if (!response.ok) {
+                        throw new Error(result.message || 'Build failed');
+                    }
+                    buildCompleteModal.show();
+                } catch (error) {
+                    showKnowledgeAlert(`Build Error: ${error.message}`);
+                } finally {
+                    isKnowledgeBuilding = false;
+                    knowledgeBuildBtn.disabled = false;
+                    if (knowledgeBuildBtnSpinner) knowledgeBuildBtnSpinner.style.display = 'none';
+                    if (knowledgeBuildBtnIcon) knowledgeBuildBtnIcon.style.display = 'inline-block';
+                    if (knowledgeBuildBtnText) knowledgeBuildBtnText.textContent = 'Build';
+                }
+            });
+        }
+        if (knowledgeModalElement) {
+            knowledgeModalElement.addEventListener('shown.bs.modal', () => {
+                loadKnowledgeFiles();
+            });
+            knowledgeModalElement.addEventListener('hide.bs.modal', (e) => {
+                if (isKnowledgeBuilding) {
+                    e.preventDefault();
+                    showKnowledgeAlert('Please wait for the knowledge build to complete.', 'warning');
+                }
+            });
+        }
+
+        function validateForm() {
+            if (!analysisTypeSelect || !runAnalysisBtn || !biomarkerHelpText) return;
+
+            const analysisTypeSelected = analysisTypeSelect.value;
+            let enabled = false;
+            let helpText = '';
+
+            const biomarkerTypes = ['cohort_comparison', 'subject_over_time', 'distribution', 'correlation_matrix'];
+            const comprehensiveTypes = ['comprehensive_correlation'];
+
+
+            if (!analysisTypeSelected) {
+                helpText = 'Please select an analysis type first.';
+            } else if (biomarkerTypes.includes(analysisTypeSelected)) {
+                const selectedBiomarkers = [...biomarkerSelect.selectedOptions];
+                helpText = 'This analysis requires at least one biomarker.';
+
+                if (['cohort_comparison', 'subject_over_time', 'distribution'].includes(analysisTypeSelected)) {
+                    enabled = selectedBiomarkers.length === 1;
+                    helpText = 'This analysis requires exactly one biomarker.';
+                } else if (['correlation_matrix'].includes(analysisTypeSelected)) {
+                    enabled = selectedBiomarkers.length > 1;
+                    helpText = 'This analysis requires two or more biomarkers.';
+                }
+
+            } else if (analysisTypeSelected === 'automated_analysis') {
+                enabled = true;
+                helpText = '';
+            
+            } else if (comprehensiveTypes.includes(analysisTypeSelected)) { 
+                enabled = true;
+                helpText = 'This analysis will run across all data types for the selected cohorts.';
+
+            } else if (analysisTypeSelected === 'cohort_distribution_report') {
+                enabled = true;
+                helpText = 'This report will run for all cohorts in the study.';
+
+            } else {
+                helpText = '';
+                if (analysisTypeSelected === 'demographics_summary') {
+                    enabled = document.getElementById('demographicsFieldSelect').value !== '';
+                } else if (analysisTypeSelected === 'event_frequency') {
+                    enabled = document.getElementById('eventFieldSelect').value !== '';
+                } else if (analysisTypeSelected === 'medication_frequency') {
+                    enabled = true;
+                }
+            }
+
+            runAnalysisBtn.disabled = !enabled;
+            biomarkerHelpText.textContent = helpText;
+        }
+
+        if (analysisTypeSelect) {
+            analysisTypeSelect.addEventListener('change', function () {
+                const selectedType = this.value;
+
+                if (biomarkerSelect) biomarkerSelect.required = false;
+                if (cohortTestSelect) cohortTestSelect.required = false;
+                if (subjectPlotSelect) subjectPlotSelect.required = false;
+                if (distributionPlotSelect) distributionPlotSelect.required = false;
+                if (demographicsFieldSelect) demographicsFieldSelect.required = false;
+                if (eventFieldSelect) eventFieldSelect.required = false;
+
+                const biomarkerTypes = ['cohort_comparison', 'subject_over_time', 'distribution', 'correlation_matrix'];
+                const demographicTypes = ['demographics_summary'];
+                const eventTypes = ['event_frequency'];
+                const medicationTypes = ['medication_frequency'];
+                const automatedTypes = ['automated_analysis'];
+                const comprehensiveTypes = ['comprehensive_correlation']; 
+                
+                const reportTypes = ['cohort_distribution_report'];
+
+                const allOptions = [
+                    cohortOptions, subjectOptions, distributionOptions, correlationOptions,
+                    automatedOptions, demographicsOptions, eventOptions, medicationOptions, cohortFilterOptions,
+                    cohortDistributionOptions
+                ];
+
+                const biomarkerSection = biomarkerSelect ? biomarkerSelect.parentElement : null;
+
+                allOptions.forEach(opt => { if (opt) opt.style.display = 'none'; });
+                if (biomarkerSection) biomarkerSection.style.display = 'none';
+                if (knowledgeBtn) knowledgeBtn.style.display = 'none';
+                if (selectedType) {
+                    dynamicOptionsContainer.style.display = 'block';
+
+                    if (biomarkerTypes.includes(selectedType)) {
+                        if (biomarkerSection) biomarkerSection.style.display = 'block';
+                        if (biomarkerSelect) biomarkerSelect.required = true;
+
+                        if (selectedType === 'cohort_comparison') {
+                            if (cohortOptions) cohortOptions.style.display = 'block';
+                            if (cohortTestSelect) cohortTestSelect.required = true;
+                        } else if (selectedType === 'subject_over_time') {
+                            if (subjectOptions) subjectOptions.style.display = 'block';
+                            if (subjectPlotSelect) subjectPlotSelect.required = true;
+                        } else if (selectedType === 'distribution') {
+                            if (distributionOptions) distributionOptions.style.display = 'block';
+                            if (distributionPlotSelect) distributionPlotSelect.required = true;
+                        } else if (selectedType === 'correlation_matrix') {
+                            if (correlationOptions) correlationOptions.style.display = 'block';
+                        }
+
+                    } else if (automatedTypes.includes(selectedType)) {
+                        if (automatedOptions) automatedOptions.style.display = 'block';
+                        if (correlationOptions) correlationOptions.style.display = 'block';
+                        if (knowledgeBtn) knowledgeBtn.style.display = 'inline-block';
+                    
+                    } else if (comprehensiveTypes.includes(selectedType)) { 
+                        if (correlationOptions) correlationOptions.style.display = 'block';
+
+                    } else if (reportTypes.includes(selectedType)) {
+                        if (cohortDistributionOptions) cohortDistributionOptions.style.display = 'block';
+
+                    } else {
+                        if (demographicTypes.includes(selectedType)) {
+                            if (demographicsOptions) demographicsOptions.style.display = 'block';
+                            if (cohortFilterOptions) cohortFilterOptions.style.display = 'block';
+                            if (demographicsFieldSelect) demographicsFieldSelect.required = true;
+                        } else if (eventTypes.includes(selectedType)) {
+                            if (eventOptions) eventOptions.style.display = 'block';
+                            if (cohortFilterOptions) cohortFilterOptions.style.display = 'block';
+                            if (eventFieldSelect) eventFieldSelect.required = true;
+                        } else if (medicationTypes.includes(selectedType)) {
+                            if (medicationOptions) medicationOptions.style.display = 'block';
+                            if (cohortFilterOptions) cohortFilterOptions.style.display = 'block';
+                        }
+                    }
+                } else {
+                    dynamicOptionsContainer.style.display = 'none';
+                }
+
+                validateForm();
+            });
+        }
+
+        if (analyticsForm) {
+            analyticsForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                if (runAnalysisBtn) {
+                    runAnalysisBtn.disabled = true;
+                    runAnalysisBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Running...`;
+                }
+
+                plotDataToRender = null;
+                if (modalBody) modalBody.innerHTML = '';
+                if (modalSpinner) modalBody.appendChild(modalSpinner);
+                if (modalSpinner) modalSpinner.style.display = 'flex';
+                if (modalTitle) modalTitle.textContent = 'Running Analysis...';
+                analysisModal.show();
+
+                const formData = {
+                    biomarker_ids: [...document.getElementById('biomarkerSelect').selectedOptions].map(opt => opt.value),
+                    analysis_type: document.getElementById('analysisTypeSelect').value,
+                    cohort_ids: [...document.getElementById('cohortSelect').selectedOptions].map(opt => opt.value),
+                    cohort_test: document.getElementById('cohortTestSelect').value,
+                    subject_codes: [...document.getElementById('subjectSelect').selectedOptions].map(opt => opt.value),
+                    subject_plot: document.getElementById('subjectPlotSelect').value,
+                    distribution_plot: document.getElementById('distributionPlotSelect').value,
+                    correlation_cohort_ids: [...document.getElementById('correlationCohortSelect').selectedOptions].map(opt => opt.value),
+                    demographics_field: document.getElementById('demographicsFieldSelect').value,
+                    event_type: document.getElementById('eventFieldSelect').value,
+                    filter_cohort_ids: [...document.getElementById('filterCohortSelect').selectedOptions].map(opt => opt.value)
+                };
+
+                fetch("{{ url_for('run_analysis', study_id=study.study_id) }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.json().then(err => { throw new Error(err.message || 'Server error'); });
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        if (modalSpinner) modalSpinner.style.display = 'none';
+
+                        if (data.status === 'success') {
+                            if (data.type === 'plot') {
+                                const bokehJson = JSON.parse(data.data);
+                                plotDataToRender = bokehJson;
+
+                                let title = 'Analysis Plot';
+                                try {
+                                    title = bokehJson.doc.roots[0].attributes.title.value;
+                                } catch (e) { /* ignore, use default */ }
+
+                                if (modalTitle) modalTitle.textContent = title;
+                                if (modalBody) modalBody.innerHTML = `<div id="${bokehJson.target_id}" class="bokeh-chart-container" style="width:100%;"></div>`;
+                                if (modalElement && modalElement.classList.contains('show')) {
+                                    try {
+                                        Bokeh.embed.embed_item(plotDataToRender);
+                                    } catch (e) {
+                                        console.error("Bokeh embed failed:", e);
+                                        if (modalBody) modalBody.innerHTML = `<div class="alert alert-danger">Error rendering plot: ${e.message}</div>`;
+                                    }
+                                    plotDataToRender = null; // Clear
+                                }
+
+                            } else if (data.type === 'stats') {
+                                if (modalTitle) modalTitle.textContent = 'Analysis Result';
+                                if (modalBody) modalBody.innerHTML = data.data;
+                            }
+                        } else {
+                            if (modalTitle) modalTitle.textContent = 'Analysis Error';
+                            if (modalBody) modalBody.innerHTML = `<div class="alert alert-danger">${data.message}</div>`;
+                        }
+                    })
+                    .catch(error => {
+                        if (modalSpinner) modalSpinner.style.display = 'none';
+                        if (modalTitle) modalTitle.textContent = 'Error';
+                        if (modalBody) modalBody.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+                    })
+                    .finally(() => {
+                        validateForm();
+                        if (runAnalysisBtn) {
+                            runAnalysisBtn.innerHTML = '<i class="bi bi-building-gear button-icon me-1"></i>Run Analysis';
+                        }
+                    });
+            });
+        }
+
+        if (biomarkerSelect) {
+            biomarkerSelect.addEventListener('change', function () {
+                const biomarkerSection = biomarkerSelect.parentElement;
+                if (biomarkerSection && biomarkerSection.style.display !== 'none') {
+                    validateForm();
+                }
+            });
+        }
+
+        const demoSelect = document.getElementById('demographicsFieldSelect');
+        const eventSelect = document.getElementById('eventFieldSelect');
+
+        if (demoSelect) {
+            demoSelect.addEventListener('change', function () {
+                if (demographicsOptions && demographicsOptions.style.display !== 'none') {
+                    validateForm();
+                }
+            });
+        }
+
+        if (eventSelect) {
+            eventSelect.addEventListener('change', function () {
+                if (eventOptions && eventOptions.style.display !== 'none') {
+                    validateForm();
+                }
+            });
+        }
+
+        validateForm();
+    });
+</script>
+
+{% endblock %}

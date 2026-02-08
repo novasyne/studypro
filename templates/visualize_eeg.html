@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}EEG Visualization - {{ subject.external_subject_code }}{% endblock %}
+
+{% block head %}
+{{ super() }}
+
+{% endblock %}
+
+{% block content %}
+<body data-page-name="visualize_eeg">
+    <br/><br/>
+    <div class="row justify-content-center">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">EEG Visualization</h2>
+                    <h5 class="card-subtitle mb-2 text-muted">
+                        Subject: {{ subject.external_subject_code }} ({{ subject.first_name }} {{ subject.last_name }})
+                    </h5>
+                    <p class="card-text mb-0">
+                        <strong>Recording Date:</strong> {{ recording.recording_datetime.strftime('%Y-%m-%d %H:%M:%S') }}
+                        <br>
+                        <strong>Detected Data Type:</strong> <span class="badge bg-info">{{ data_type_display }}</span>
+                    </p>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card">
+                                <div class="card-header">
+                                    Visualization Options
+                                </div>
+                                <div class="card-body">
+                                    {% if data_type == "TIME_DOMAIN" %}
+                                    <p>Raw time-domain data detected. Choose a visualization:</p>
+                                    <div class="btn-group-vertical w-100" role="group" aria-label="Time Domain Visualizations">
+                                        <button type="button" class="btn btn-primary" data-plot-type="psd_plot">
+                                            <i class="bi bi-graph-up me-2"></i>Overall PSD Plot
+                                        </button><br/>
+                                        <button type="button" class="btn btn-primary" data-plot-type="topo_maps">
+                                            <i class="bi bi-grid-3x3-gap me-2"></i>Topographic PSD Maps
+                                        </button><br/>
+                                    </div>
+                                    {% elif data_type == "FREQUENCY_DOMAIN" %}
+                                    <p>Frequency-domain (PSD) data detected. Choose a visualization:</p>
+                                     <div class="btn-group-vertical w-100" role="group" aria-label="Frequency Domain Visualizations">
+                                        <button type="button" class="btn btn-primary" data-plot-type="topo_band">
+                                            <i class="bi bi-grid me-2"></i>Topoplot per Band
+                                        </button><br/>
+                                        <button type="button" class="btn btn-primary" data-plot-type="bar_regional">
+                                            <i class="bi bi-bar-chart me-2"></i>Regional Power Bar Chart
+                                        </button>
+                                    </div>
+                                    {% else %}
+                                    <div class="alert alert-danger" role="alert">
+                                        <strong>Error:</strong> {{ error_message | default('Unknown or unsupported data type.') }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-9">
+                            <div id="plot-container">
+                                <div id="plot-loader" class="text-center" style="display: none;">
+                                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                                        <span class="visually-hidden">Loading visualization...</span>
+                                    </div>
+                                    <h5 class="mt-3">Generating visualization...</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="mt-4">
+                    
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ url_for('study_recordings', study_id=study.study_id) }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle button-icon me-1"></i>Close</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const plotContainer = document.getElementById('plot-container');
+    const plotPlaceholder = document.getElementById('plot-placeholder');
+    const plotLoader = document.getElementById('plot-loader');
+    const recordingId = "{{ recording.recording_id }}";
+
+    document.querySelectorAll('[data-plot-type]').forEach(button => {
+        button.addEventListener('click', function() {
+            const plotType = this.dataset.plotType;
+
+            if (plotPlaceholder) plotPlaceholder.style.display = 'none';
+            plotLoader.style.display = 'block';
+            plotContainer.innerHTML = ''; // Clear previous plot
+            plotContainer.appendChild(plotLoader);
+
+            console.log(`Requesting plot type: ${plotType} for recording: ${recordingId}`);
+            
+            fetch(`/api/visualize_eeg/${recordingId}/${plotType}`)
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(err => {
+                             throw new Error(err.error || 'Network response was not ok');
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    plotLoader.style.display = 'none';
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+
+                    plotContainer.innerHTML = data.plot_html; 
+                    const scripts = plotContainer.querySelectorAll("script");
+                    scripts.forEach(oldScript => {
+                        const newScript = document.createElement("script");
+                        Array.from(oldScript.attributes).forEach(attr => {
+                            newScript.setAttribute(attr.name, attr.value);
+                        });
+                        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                        oldScript.parentNode.replaceChild(newScript, oldScript);
+                    });
+                })
+                .catch(error => {
+                    plotLoader.style.display = 'none';
+                    plotContainer.innerHTML = `<div class="alert alert-danger">Error generating plot: ${error.message}</div>`;
+                });
+        });
+    });
+});
+</script>
+{% endblock %}

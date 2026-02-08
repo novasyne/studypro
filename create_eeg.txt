@@ -1,0 +1,36 @@
+-- Insert statements for eeg table
+-- Total records: 32
+-- Note: eeg_id is an IDENTITY column and will be auto-generated
+
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'ANT Neuro', N'eego mylab');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'ANT Neuro', N'eego sports');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'ANT Neuro', N'eego');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'ANT Neuro', N'eego hub');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Allengers Medical Systems', N'EEG System');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Alpha Trace Medical Systems', N'32-channel EEG');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'BIOPAC', N'B-Alert');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'BITalino (PLUX)', N'BITalino');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Beacon Biosignals', N'Dream');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'BioSemi', N'ActiveTwo');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Biopac', N'B-Alert');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Blackrock Neurotech', N'CerePlex');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Brain Products', N'actiCHamp');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Brain Products', N'LiveAmp');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'BrainMaster Technologies', N'Discovery');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'BrainScope', N'One');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'BrainVision', N'QuickAmp');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Cognionics', N'Quick-20');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Compumedics Neuroscan', N'SynAmps RT');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Electrical Geodesics', N'GES 400');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'EMOTIV', N'Epoc X');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'EMOTIV', N'Insight');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'g.tec', N'g.HIamp');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'g.tec', N'g.Nautilus');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'MindMedia', N'NeXus-32');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Mitsar', N'Medical EEG');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Muse', N'Muse S');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Neuroelectrics', N'Starstim');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Neuroelectrics', N'Enobio');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Nihon Kohden', N'EEG-1200');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Wearable Sensing', N'Dry EEG System');
+INSERT INTO [dbo].[eeg] ([manufacturer], [device_type]) VALUES (N'Wearable Sensing', N'DSI-24');

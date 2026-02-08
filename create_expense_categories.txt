@@ -1,0 +1,16 @@
+INSERT INTO [dbo].[expense_categories] ([category_id], [category_name], [description]) VALUES
+(NEWID(), 'Equipment', 'Purchase or rental of medical or research equipment.'),
+(NEWID(), 'Data Management', 'Database setup, software licenses, data storage.'),
+(NEWID(), 'Consumables & Supplies', 'Disposable items, lab supplies, and other materials used during the trial.'),
+(NEWID(), 'Site Costs', 'Site-specific operational costs, lab rental.'),
+(NEWID(), 'Participant Reimbursement', 'Costs for subject travel, stipends, etc.'),
+(NEWID(), 'Operational Costs', 'General administrative and operational overhead.'),
+(NEWID(), 'Staff Salaries', 'Salary contributions for principal investigators, researchers, and other staff.'),
+(NEWID(), 'Ethics Committee Review', 'Fees for IRB/Ethics committee submissions and reviews.'),
+(NEWID(), 'Pharmacy Services', 'Costs for investigational product, placebo, and dispensing.'),
+(NEWID(), 'Lab Supplies', 'Assay kits, reagents, sample collection tubes.'),
+(NEWID(), 'Other', 'Miscellaneous expenses not covered by other categories.'),
+(NEWID(), 'Subject Recruitment', 'Advertising and screening costs.'),
+(NEWID(), 'Participant Costs', 'Compensation, travel reimbursement, and other costs directly related to participants.'),
+(NEWID(), 'Publication Fees', 'Fees for publishing research findings in academic journals.');
+

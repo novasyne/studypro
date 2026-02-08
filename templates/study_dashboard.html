@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}Status - {{ study.name }}{% endblock %}
+
+{% block head %}
+{{ super() }}
+{# Bokeh 3.8.0 CDN Links #}
+<link href="https://cdn.bokeh.org/bokeh/release/bokeh-3.8.0.min.css" rel="stylesheet" type="text/css">
+<link href="https://cdn.bokeh.org/bokeh/release/bokeh-widgets-3.8.0.min.css" rel="stylesheet" type="text/css">
+
+<style>
+    .kpi-card {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: .25rem;
+        padding: 1rem;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+
+    .kpi-value {
+        font-size: 1.75rem;
+        font-weight: bold;
+        color: #20519c;
+    }
+
+    .kpi-label {
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+
+    .no-data-msg {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 350px;
+        color: #6c757d;
+        font-style: italic;
+    }
+
+    .bk-root {
+        min-height: 350px;
+    }
+
+    div[data-root-id] .bk-root {
+        min-height: 250px;
+    }
+
+    .event-card-header {
+        font-size: 0.9rem;
+        font-weight: bold;
+        color: #20519c;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 4px;
+    }
+
+    .event-table {
+        font-size: 0.8rem;
+    }
+
+    .event-table th {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .event-table td {
+        color: #555;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<body data-page-name="study_dashboard">
+    <div class="container-fluid mt-4">
+        <br/><br/>
+        {# Study Title and Back Button #}
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="mb-0">Study Status: {{ study.name }}</h3>
+            <div>
+                <a href="{{ url_for('edit_study', study_id=study.study_id) }}" class="btn btn-info me-2"><i
+                        class="bi bi-clipboard-pulse button-icon me-1"></i>Manage Study</a>
+            </div>
+        </div>
+
+        {# KPI Row #}
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="kpi-card h-100">
+                    <div class="kpi-label">Status:</div>
+                    <div class="kpi-value">{{ kpis.status or 'N/A' }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card h-100">
+                    <div class="kpi-label">Active / Total Subjects:</div>
+                    <div class="kpi-value">{{ kpis.active_subjects }} / {{ kpis.total_subjects }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card h-100">
+                    <div class="kpi-label">Total Recordings Logged:</div>
+                    <div class="kpi-value">{{ kpis.total_recordings }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="kpi-card h-100">
+                    <div class="kpi-label">Remaining Budget:</div>
+                    <div class="kpi-value">${{ "{:,.2f}".format(kpis.remaining_balance) }}</div>
+                </div>
+            </div>
+        </div>
+
+        {# Charts Row 1 #}
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        {# Check if key exists in the plot_divs dictionary #}
+                        {% if 'burn_rate_chart' in plot_divs %}
+                        {{ plot_divs['burn_rate_chart'] | safe }}
+                        {% else %}
+                        <div class="no-data-msg">No financial data to display chart.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        {% if 'enrollment_chart' in plot_divs %}
+                        {{ plot_divs['enrollment_chart'] | safe }}
+                        {% else %}
+                        <div class="no-data-msg">No enrollment data to display chart.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Charts Row 2 #}
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-body d-flex justify-content-center align-items-center">
+                        {% if 'arm_pie_chart' in plot_divs %}
+                        {{ plot_divs['arm_pie_chart'] | safe }}
+                        {% else %}
+                        <div class="no-data-msg">No cohort data to display chart.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        {% if 'biomarker_freq_chart' in plot_divs %}
+                        {{ plot_divs['biomarker_freq_chart'] | safe }}
+                        {% else %}
+                        <div class="no-data-msg">No biomarker data to display chart.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Heatmap and Flagged Subjects Row #}
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">Recording Activity Heatmap (Recordings per Week)</div>
+                    <div class="card-body" style="overflow-x: auto;">
+                        {% if 'recording_heatmap' in plot_divs %}
+                        {{ plot_divs['recording_heatmap'] | safe }}
+                        {% else %}
+                        <div class="no-data-msg">No recording data to display heatmap.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="card mb-4">
+                    <div class="card-header">Subject Events & Flags</div>
+                    <div class="card-body" style="min-height: 400px; max-height: 600px; overflow-y: auto;">
+
+                        <h5 class="event-card-header">Flagged Subjects</h5>
+                        {% if flagged_subjects %}
+                        <table class="table table-sm table-striped event-table">
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Status/Reason</th>
+                                    <th>Last Activity</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for subject in flagged_subjects %}
+                                <tr>
+                                    <td>{{ subject.code }}</td>
+                                    <td><span
+                                            class="badge {% if subject.status == 'Withdrawn' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{
+                                            subject.status }}</span></td>
+                                    <td>{{ subject.last_activity }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <p class="text-muted text-center" style="font-size: 0.8rem; margin-top: 1rem;">No subjects
+                            flagged for inactivity or withdrawal.</p>
+                        {% endif %}
+
+                        <hr>
+
+                        <h5 class="event-card-header">Recent Adverse Events</h5>
+                        {% if recent_aes %}
+                        <table class="table table-sm table-striped event-table">
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Event</th>
+                                    <th>Grade</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for ae in recent_aes %}
+                                <tr>
+                                    <td>{{ ae.code }}</td>
+                                    <td><span class="text-danger">{{ ae.term }}</span></td>
+                                    <td>{{ ae.grade }}</td>
+                                    <td>{{ ae.date }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <p class="text-muted text-center" style="font-size: 0.8rem; margin-top: 1rem;">No adverse events
+                            recorded.</p>
+                        {% endif %}
+
+                        <hr>
+
+                        <h5 class="event-card-header">Recent Symptoms</h5>
+                        {% if recent_symptoms %}
+                        <table class="table table-sm table-striped event-table">
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Symptom</th>
+                                    <th>Severity</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for sym in recent_symptoms %}
+                                <tr>
+                                    <td>{{ sym.code }}</td>
+                                    <td>{{ sym.term }}</td>
+                                    <td>{{ sym.severity }}</td>
+                                    <td>{{ sym.date }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                        {% else %}
+                        <p class="text-muted text-center" style="font-size: 0.8rem; margin-top: 1rem;">No symptoms
+                            recorded.</p>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+        </div><br /><br />
+    </div> {# End container-fluid #}
+</body>
+{% endblock %}
+
+
+{% block scripts %}
+{{ super() }}
+
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-3.8.0.min.js"></script>
+<script src="https://cdn.bokeh.org/bokeh/release/bokeh-widgets-3.8.0.min.js"></script>
+
+{% if plot_script %}
+    {{ plot_script | safe }}
+{% endif %}
+
+{% endblock %}

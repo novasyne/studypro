@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "YourStrongP@ssw0rd!"
+      MSSQL_PID: "Express"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sql_data:/var/opt/mssql
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    command: >
+      azurite-blob --blobHost 0.0.0.0 --location /data
+    ports:
+      - "10000:10000"
+    volumes:
+      - azurite_data:/data
+
+  app:
+    build: .
+    depends_on:
+      - sql
+      - azurite
+    environment:
+      SECRET_KEY: "dev_secret"
+
+      DB_SERVER: sql
+      DB_USER: sa
+      DB_PASS: YourStrongP@ssw0rd!
+      DB_NAME: master
+
+      MAIL_SERVER: smtp.sendgrid.net
+      MAIL_PORT: 587
+      MAIL_USE_TLS: "True"
+      MAIL_PASSWORD: password_here
+
+      AZURE_STORAGE_CONNECTION_STRING: >
+        DefaultEndpointsProtocol=http;
+        BlobEndpoint=http://azurite:10000/devstoreaccount1;
+        AccountName=devstoreaccount1;
+        AccountKey=Eby8vdM02xNo/////==;
+
+    command: ["sh", "-c", "python init_db.py && flask run --host=0.0.0.0 --port=8080"]
+
+    ports:
+      - "8080:8080"
+
+volumes:
+  sql_data:
+  azurite_data:
+

@@ -1,0 +1,850 @@
+{% extends "base.html" %}
+
+{% block title %}Learn More About STUDYPRO{% endblock %}
+
+{% block content %}
+<style>
+    /* Override background for content page */
+    body {
+        background: var(--surface);
+    }
+
+    /* Content Container */
+    .content-wrapper {
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    /* Section Styling */
+    .content-section {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 2.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: var(--shadow);
+    }
+
+    .content-section h3 {
+        color: var(--primary);
+        font-size: 1.375rem;
+        font-weight: 700;
+        margin-bottom: 1.25rem;
+        text-align: center;
+        position: relative;
+        padding-bottom: 1rem;
+    }
+
+    .content-section h3::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 3px;
+        background: linear-gradient(90deg, var(--accent), var(--primary));
+        border-radius: 2px;
+    }
+
+    .content-section p {
+        font-size: 0.9375rem;
+        color: var(--text-secondary);
+        line-height: 1.8;
+        margin-bottom: 1rem;
+        text-align: justify;
+    }
+
+    .content-section ul {
+        margin: 1rem 0 1.5rem;
+        padding-left: 0;
+        list-style: none;
+    }
+
+    .content-section li {
+        position: relative;
+        padding-left: 1.75rem;
+        margin-bottom: 0.875rem;
+        font-size: 0.9375rem;
+        color: var(--text-secondary);
+        line-height: 1.7;
+    }
+
+    .content-section li::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0.5rem;
+        width: 8px;
+        height: 8px;
+        background: rgb(42, 21, 161);
+        border-radius: 50%;
+    }
+
+    .content-section li strong {
+        color: var(--text-primary);
+    }
+
+    .content-section li em {
+        color: var(--primary);
+        font-style: normal;
+        font-weight: 600;
+    }
+
+    /* Workflow Image */
+    .workflow-section {
+        text-align: center;
+        padding: 2rem;
+        background: var(--surface-alt);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border);
+        margin-bottom: 1.5rem;
+    }
+
+    .workflow-section img {
+        max-width: 100%;
+        height: auto;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-lg);
+    }
+
+    /* Comparison Table */
+    .comparison-table-wrapper {
+        overflow-x: auto;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        margin-top: 1.5rem;
+    }
+
+    .comparison-table {
+        width: 100%;
+        margin: 0;
+        border-collapse: collapse;
+    }
+
+    .comparison-table thead th {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: var(--text-inverse);
+        font-size: 0.8125rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        padding: 1rem 1.25rem;
+        border: none;
+        text-align: left;
+    }
+
+    .comparison-table thead th:first-child {
+        width: 25%;
+    }
+
+    .comparison-table tbody td {
+        padding: 1rem 1.25rem;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+        line-height: 1.6;
+    }
+
+    .comparison-table tbody tr:nth-child(even) {
+        background: var(--surface-alt);
+    }
+
+    .comparison-table tbody tr:hover {
+        background: #f1f5f9;
+    }
+
+    .comparison-table tbody td:first-child {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .comparison-table tbody td:last-child {
+
+        font-weight: 500;
+    }
+
+    /* CTA Section */
+    .cta-card {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border-radius: var(--radius-lg);
+        padding: 2.5rem;
+        text-align: center;
+        box-shadow: var(--shadow-lg);
+    }
+
+    .cta-card h4 {
+        color: var(--text-inverse);
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 0.75rem;
+    }
+
+    .cta-card p {
+        color: rgba(255, 255, 255, 0.85);
+        font-size: 0.9375rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .cta-card .btn {
+        background: var(--text-inverse);
+        color: var(--primary);
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+    }
+
+    .cta-card .btn:hover {
+        background: var(--surface-alt);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+
+
+    #pricingResult {
+        margin-top: 1.5rem;
+        padding: 1.25rem;
+        background: var(--surface-alt);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+    }
+
+    #pricingResult p {
+        margin-bottom: 0.5rem;
+        font-size: 0.9375rem;
+        color: var(--text-secondary);
+    }
+
+    #pricingResult .fs-5 {
+        color: var(--primary);
+    }
+
+    .tier-qualifiers {
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+    }
+
+    .tier-qualifiers h6 {
+        color: var(--primary);
+        font-weight: 700;
+        font-size: 0.8125rem;
+        margin-top: 0.75rem;
+    }
+
+    .tier-qualifiers p {
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+    }
+
+.training-item {
+    padding:0.75rem;
+    border-radius:8px;
+    cursor:pointer;
+    color:#e5e7eb;
+}
+.training-item:hover {
+    background:#1f2937;
+}
+.training-item.active {
+    background:#1a6bb5;
+}
+
+
+</style>
+
+<div class="content-wrapper">
+    <!-- Section 1: Why Adopt CTMS -->
+    <div class="content-section">
+        <h3>Why Adopt a Clinical Trial Management System (CTMS)?</h3>
+        <p>
+            Modern clinical research requires coordination across multiple disciplines, sites, and datasets.
+            Spreadsheets, shared folders, and email-based workflows often result in fragmented information, poor
+            audit trails, and data integrity risks. A dedicated CTMS centralizes every aspect of your study, from
+            participant registration and biomarker tracking to analytics and compliance reporting.
+        </p>
+        <p>By adopting a CTMS, research teams can:</p>
+        <ul>
+            <li><strong>Ensure data consistency and integrity</strong> across every stage of a study.</li>
+            <li><strong>Automate regulatory compliance</strong> by maintaining complete audit logs and consent
+                histories.</li>
+            <li><strong>Enhance team collaboration</strong> across departments and external partners with shared
+                dashboards.</li>
+            <li><strong>Reduce administrative overhead</strong> by streamlining document management and financial
+                tracking.</li>
+            <li><strong>Enable advanced analytics</strong> for faster insights and better decision-making during and
+                after trials.</li>
+        </ul>
+        <p>
+            A dedicated Clinical Trial Management System eliminates manual errors, ensures traceability, and empowers
+            teams
+            to focus on science rather than administration.
+        </p>
+    </div>
+
+    <!-- Workflow Image -->
+    <div class="workflow-section">
+        <img src="{{ url_for('static', filename='workflow.png') }}" alt="STUDYPRO Workflow">
+    </div>
+
+    <!-- Section 2: How We Solve Challenges -->
+    <div class="content-section">
+        <h3>How We Solve Challenges You May Face in Your Study</h3>
+        <p>
+            STUDYPRO was designed by researchers, for researchers. It directly addresses the most common pain points
+            encountered in academic, hospital-based, and multi-site studies without the complexity and cost of
+            legacy CTMS platforms.
+        </p>
+        <ul>
+            <li>
+                <strong>Challenge: Complex and expensive system setup.</strong><br>
+                <em>Our solution:</em> Deploy in minutes, either on-premises or cloud-hosted. No external
+                consultants or multi-week installations required.
+            </li>
+            <li>
+                <strong>Challenge: Steep learning curve for coordinators and students.</strong><br>
+                <em>Our solution:</em> An intuitive interface with guided study creation, built-in help content, and
+                a Sample Study Generator for rapid onboarding and training.
+            </li>
+            <li>
+                <strong>Challenge: Fragmented workflows across study types and data sources.</strong><br>
+                <em>Our solution:</em> Unified modules for participant management, cohort setup, biomarker
+                and event recording with in-built statistical analysis, ensuring seamless data flow from enrollment to
+                export.
+            </li>
+            <li>
+                <strong>Challenge: Limited access to AI-driven insights in smaller trials.</strong><br>
+                <em>Our solution:</em> Integrated AI modules automatically summarize biomarker data, generate
+                citations, and support early interpretation of trial outcomes.
+            </li>
+            <li>
+                <strong>Challenge: High license and maintenance fees in commercial CTMS platforms.</strong><br>
+                <em>Our solution:</em> STUDYPRO is low-cost, lightweight, and scalable. It's designed to be
+                affordable for academic institutions, smaller sponsors, and public research programs.
+            </li>
+        </ul>
+        <p>
+            Where most CTMS platforms focus on enterprise clients with complex integration and regulatory compliance
+            requirements, STUDYPRO
+            focuses on accessibility, transparency, and usability. Every feature is built to simplify, not complicate,
+            your trial operations.
+        </p>
+    </div>
+
+    <!-- Section 3: Comparison Table -->
+    <div class="content-section">
+        <h3>How We Compare to Traditional CTMS Platforms</h3>
+        <p>
+            Traditional CTMS platforms are powerful but often expensive, and difficult
+            to deploy, customize and maintain. They require long onboarding periods, dedicated IT support, and costly
+            licensing models that
+            put them out of reach for many research institutions.
+        </p>
+
+        <div class="comparison-table-wrapper">
+            <table class="comparison-table">
+                <thead>
+                    <tr>
+                        <th>Feature</th>
+                        <th>Traditional CTMS</th>
+                        <th>STUDYPRO</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Deployment</td>
+                        <td>Requires vendor installation, long setup cycles</td>
+                        <td>Ready-to-run with one-click cloud or local deployment</td>
+                    </tr>
+                    <tr>
+                        <td>User Onboarding</td>
+                        <td>Formal training sessions, steep learning curve</td>
+                        <td>Guided workflows and sample study generator for rapid learning</td>
+                    </tr>
+                    <tr>
+                        <td>Cost</td>
+                        <td>High per-user or per-study licensing fees</td>
+                        <td>Affordable academic and institutional pricing, low total cost of ownership</td>
+                    </tr>
+                    <tr>
+                        <td>Customization</td>
+                        <td>Rigid structure, vendor-dependent changes</td>
+                        <td>Fully customizable as an open-source platform</td>
+                    </tr>
+                    <tr>
+                        <td>Analytics</td>
+                        <td>Limited to static reports</td>
+                        <td>Dynamic dashboards, in-built statistics and AI-powered analytics</td>
+                    </tr>
+                    <tr>
+                        <td>Compliance & Audit</td>
+                        <td>Manual or third-party audit logs</td>
+                        <td>Built-in audit trail with automatic compliance tracking</td>
+                    </tr>
+                    <tr>
+                        <td>Support</td>
+                        <td>Vendor-dependent, often costly</td>
+                        <td>Direct support with transparent pricing</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- CTA Section -->
+    <div class="cta-card">
+        <h4>Ready to Get Started?</h4>
+        <p>Contact us to learn more about pricing and deployment options for your institution.</p>
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <button type="button" class="btn" id="demoBtn" style="width:140px">
+                <i class="bi bi-play-circle me-2"></i>Video Demo
+            </button>
+            <button type="button" class="btn" id="trainingBtn" style="width:140px">
+                <i class="bi bi-play-circle me-2"></i>Training
+            </button>
+            <a href="{{ url_for('contact') }}" class="btn" style="width:140px">
+                <i class="bi bi-envelope me-2"></i>Contact Us
+            </a>
+            <button type="button" class="btn" data-bs-toggle="modal" data-bs-target="#pricingModal" style="width:140px">
+                <i class="bi bi-calculator me-2"></i>Pricing
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Training Modal -->
+<div id="trainingModal" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.75);
+    z-index:1055;
+    align-items:center;
+    justify-content:center;
+">
+    <div style="
+        background:#0b0b0b;
+        border-radius:12px;
+        max-width:1500px;
+        width:95%;
+        height:85vh;
+        display:flex;
+        position:relative;
+        box-shadow:0 20px 60px rgba(0,0,0,0.6);
+        overflow:hidden;
+    ">
+        <!-- Close -->
+        <button id="closeTraining" style="
+            position:absolute;
+            top:10px;
+            right:14px;
+            background:transparent;
+            border:none;
+            color:white;
+            font-size:1.75rem;
+            cursor:pointer;
+            z-index:2;
+        ">&times;</button>
+
+        <!-- Topic List -->
+        <div style="
+            width:30%;
+            background:#111;
+            padding:1.25rem;
+            overflow-y:auto;
+            border-right:1px solid #222;
+        ">
+            <h5 style="color:#fff;margin-bottom:1rem;">Training Modules</h5>
+            <div class="training-item">
+                <a style="color:white" href="/static/Content.docx" download>Download Agenda (.docx)</a>
+            </div>
+
+            <div class="training-item" data-video="https://www.youtube.com/embed/9Pwn5yPBptg">
+                <strong>Topic 1: Welcome & Learning Objectives (5 min)</strong><br/>
+                <a style="color:white" href="/static/Topic1.docx" download>Download Topic 1 Transcript (.docx)</a>
+            </div>
+
+            <div class="training-item" data-video="https://www.youtube.com/embed/avJTZ0NMC4s">
+                <strong>Topic 2: Foundations of Clinical Trials (11 min)</strong><br/>
+                <a style="color:white" href="/static/Topic2.docx" download>Download Topic 2 Transcript (.docx)</a>
+            </div>
+
+            <div class="training-item" data-video="https://www.youtube.com/embed/H9G9Ce-Zcfw">
+                <strong>Topic 3: Overview of the Clinical Trial Lifecycle (9 min)</strong><br/>
+                <a style="color:white" href="/static/Topic3.docx" download>Download Topic 3 Transcript (.docx)</a>
+            </div>
+
+            <div class="training-item" data-video="https://youtube.com/embed/wmlWDbi3AeU">
+                <strong>Topic 4: Introduction to CTMS Concepts (10 min)</strong><br/>
+                <a style="color:white" href="/static/Topic4.docx" download>Download Topic 4 Transcript (.docx)</a>
+            </div>
+
+            <div class="training-item" data-video="https://youtube.com/embed/36EmtipTPtE">
+                <strong>Topic 5: Study Setup and Configuration (13 min)</strong><br/>
+                <a style="color:white" href="/static/Topic5.docx" download>Download Topic 5 Transcript (.docx)</a>
+            </div>
+
+            <div class="training-item" data-video="https://youtube.com/embed/tZiYVk6ifrg">
+                <strong>Topic 6: Research Team and Roles (6 min)</strong><br/>
+                <a style="color:white" href="/static/Topic6.docx" download>Download Topic 6 Transcript (.docx)</a>
+            </div>
+
+            <div class="training-item" data-video="https://youtube.com/embed/q9Fn-9bsW8s">
+                <strong>Topic 7: Subject Management and Enrollment (9 min)</strong><br/>
+                <a style="color:white" href="/static/Topic7.docx" download>Download Topic 7 Transcript (.docx)</a>
+            </div>
+
+            <div class="training-item" data-video="https://youtube.com/embed/tj6_Y3n9aY8">
+                <strong>Topic 8: Clinical Data Collection (8 min)</strong><br/>
+                <a style="color:white" href="/static/Topic8.docx" download>Download Topic 8 Transcript (.docx)</a>
+            </div>
+
+            <div class="training-item" data-video="https://youtube.com/embed/Uotzij0I-TA">
+                <strong>Topic 9: Digital Biomarkers (8 min)</strong><br/>
+                <a style="color:white" href="/static/Topic9.docx" download>Download Topic 9 Transcript (.docx)</a>
+            </div>
+
+            <div class="training-item" data-video="https://youtube.com/embed/AmKVVGJOt-8">
+                <strong>Topic 10: Monitoring Study Progress (8 min)</strong><br/>
+                <a style="color:white" href="/static/Topic10.docx" download>Download Topic 10 Transcript (.docx)</a>
+            </div>            
+
+            <div class="training-item" data-video="https://youtube.com/embed/YQrclvbG4Ic">
+                <strong>Topic 11: Introduction to Clinical Data Analysis (10 min)</strong><br/>
+                <a style="color:white" href="/static/Topic11.docx" download>Download Topic 11 Transcript (.docx)</a>
+            </div>  
+
+            <div class="training-item" data-video="https://youtube.com/embed/15iE2xSishc">
+                <strong>Topic 12: Financial Awareness in Research (7 min)</strong><br/>
+                <a style="color:white" href="/static/Topic12.docx" download>Download Topic 12 Transcript (.docx)</a>
+            </div> 
+
+            <div class="training-item" data-video="https://youtube.com/embed/uqHXHwsnAoQ">
+                <strong>Topic 13: Best Practices and Common Pitfalls (7 min)</strong><br/>
+                <a style="color:white" href="/static/Topic13.docx" download>Download Topic 13 Transcript (.docx)</a>
+            </div> 
+            
+        </div>
+
+        <!-- Video Player -->
+        <div style="
+            flex:1;
+            background:black;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+        ">
+            <iframe
+                id="trainingPlayer"
+                width="100%"
+                height="100%"
+                src=""
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen
+                style="background: #000 url('{{ url_for('static', filename='ctms_training_poster.png') }}') center / contain no-repeat;border-radius:12px;max-width:1400px;width:90%;padding:1rem;position:relative;box-shadow:0 20px 60px rgba(0,0,0,0.5);"
+            ></iframe>
+        </div>
+    </div>
+</div>
+
+
+<!-- Demo Video Modal -->
+<div id="demoModal" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.75);
+    z-index:1055;
+    align-items:center;
+    justify-content:center;
+">
+    <div style="
+        background:#000;
+        border-radius:12px;
+        max-width:1400px;
+        width:90%;
+        padding:1rem;
+        position:relative;
+        box-shadow:0 20px 60px rgba(0,0,0,0.5);
+    ">
+        <button id="closeDemo" style="
+            position:absolute;
+            top:10px;
+            right:12px;
+            background:transparent;
+            border:none;
+            color:white;
+            font-size:1.5rem;
+            cursor:pointer;
+        " aria-label="Close">
+            &times;
+        </button><br />
+
+        <video id="demoVideo" controls style="
+            width:100%;
+            height:auto;
+            border-radius:8px;
+        ">
+            <source src="{{ url_for('static', filename='demo.mp4') }}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+</div>
+
+
+<!-- Pricing Modal -->
+<div class="modal fade pricing-modal" id="pricingModal" tabindex="-1" aria-labelledby="pricingModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="pricingModalLabel">
+                    <i class="bi bi-calculator me-2"></i>Pricing Estimator
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-4">
+                    Estimate your monthly cost based on your tier and trial subject count. This assumes a
+                    cloud-hosted deployment and any applicable license fees. Pricing is in USD and subject to change.
+                </p>
+
+                <div class="mb-3">
+                    <label for="tierType" class="form-label">1. Select Tier Type</label>
+                    <select class="form-select" id="tierType">
+                        <option value="institutional" selected>Institutional Tier</option>
+                        <option value="country">Country Tier</option>
+                    </select>
+                </div>
+
+                <div class="mb-3" id="institutionalTierGroup">
+                    <label for="institutionalTier" class="form-label">2. Select Institutional Tier</label>
+                    <select class="form-select" id="institutionalTier">
+                        <option value="Tier 1">Tier 1 – Global Elite Research Institutions</option>
+                        <option value="Tier 2">Tier 2 – National Research Leaders</option>
+                        <option value="Tier 3">Tier 3 – Regional Research Institutions</option>
+                        <option value="Tier 4">Tier 4 – Local Clinical Sites / New Entrants</option>
+                        <option value="Tier 5">Tier 5 – Resource-Limited Settings</option>
+                    </select>
+                </div>
+
+                <div class="mb-3" id="countryTierGroup" style="display:none;">
+                    <label for="countryTier" class="form-label">2. Select Country Tier</label>
+                    <select class="form-select" id="countryTier">
+                        <option value="Tier 1">Tier 1 – High-income / Advanced Research Economies</option>
+                        <option value="Tier 2">Tier 2 – Emerging / Upper-Middle-Income Research Economies</option>
+                        <option value="Tier 3">Tier 3 – Developing / Resource-Limited Research Economies</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="numSubjects" class="form-label">3. Enter Number of Trial Subjects</label>
+                    <input type="number" class="form-control" id="numSubjects" value="100" min="1">
+                </div>
+
+                <div id="pricingResult" style="display:none;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="calculatePriceBtn">
+                    <i class="bi bi-calculator me-1"></i>Calculate
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+    const trainingBtn = document.getElementById('trainingBtn');
+    const trainingModal = document.getElementById('trainingModal');
+    const closeTraining = document.getElementById('closeTraining');
+    const player = document.getElementById('trainingPlayer');
+    const items = document.querySelectorAll('.training-item');
+
+    function openTraining(videoUrl) {
+        trainingModal.style.display = 'flex';
+        player.src = videoUrl + '?autoplay=1&rel=0';
+    }
+
+    function closeTrainingModal() {
+        trainingModal.style.display = 'none';
+        player.src = '';
+    }
+
+    trainingBtn.addEventListener('click', function () {
+        openTraining(items[0].dataset.video);
+        items[0].classList.add('active');
+    });
+
+    items.forEach(item => {
+        item.addEventListener('click', function () {
+            items.forEach(i => i.classList.remove('active'));
+            this.classList.add('active');
+            player.src = this.dataset.video + '?autoplay=1&rel=0';
+        });
+    });
+
+    closeTraining.addEventListener('click', closeTrainingModal);
+
+    trainingModal.addEventListener('click', function (e) {
+        if (e.target === trainingModal) closeTrainingModal();
+    });
+
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && trainingModal.style.display === 'flex') {
+            closeTrainingModal();
+        }
+    });
+});
+
+    function calculate_monthly_cost(
+        num_subjects,
+        biomarker_gb_per_day = 0.000005,
+        eeg_gb_per_day = 0.2,
+        wearable_gb_per_day = 0.05,
+        azure_sql_monthly_fixed = 5.0,
+        sql_share_factor = 250,
+        storage_cost_per_gb = 0.018,
+        transaction_cost_per_100k = 0.01,
+        avg_transactions_per_subject_month = 1000,
+        redundancy_overhead = 0.2
+    ) {
+        const gb_per_day = biomarker_gb_per_day + eeg_gb_per_day + wearable_gb_per_day;
+        const gb_per_month = gb_per_day * 30;
+        const storage_cost = gb_per_month * storage_cost_per_gb;
+        const transaction_cost = (avg_transactions_per_subject_month / 100000) * transaction_cost_per_100k;
+        const sql_cost_per_subject = azure_sql_monthly_fixed / sql_share_factor;
+        const total_subject_cost = (storage_cost + transaction_cost + sql_cost_per_subject) * (1 + redundancy_overhead);
+        const total_monthly_cost = total_subject_cost * num_subjects;
+
+        return {
+            "subjects": num_subjects,
+            "gb_per_subject_month": gb_per_month.toFixed(3),
+            "storage_cost_per_subject": storage_cost.toFixed(4),
+            "transaction_cost_per_subject": transaction_cost.toFixed(4),
+            "sql_cost_per_subject": sql_cost_per_subject.toFixed(4),
+            "total_cost_per_subject": total_subject_cost.toFixed(4),
+            "total_monthly_cost_all_subjects": total_monthly_cost.toFixed(2),
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        var tierTypeSelect = document.getElementById('tierType');
+        var instTierGroup = document.getElementById('institutionalTierGroup');
+        var countryTierGroup = document.getElementById('countryTierGroup');
+        var calculateBtn = document.getElementById('calculatePriceBtn');
+        var pricingResultDiv = document.getElementById('pricingResult');
+
+        if (tierTypeSelect) {
+            tierTypeSelect.addEventListener('change', function () {
+                if (this.value === 'institutional') {
+                    instTierGroup.style.display = 'block';
+                    countryTierGroup.style.display = 'none';
+                } else {
+                    instTierGroup.style.display = 'none';
+                    countryTierGroup.style.display = 'block';
+                }
+            });
+        }
+
+        if (calculateBtn) {
+            calculateBtn.addEventListener('click', function () {
+                var numSubs = parseInt(document.getElementById('numSubjects').value, 10);
+                if (isNaN(numSubs) || numSubs <= 0) {
+                    pricingResultDiv.innerHTML = '<p class="text-danger"><i class="bi bi-exclamation-circle me-1"></i>Please enter a valid number of subjects.</p>';
+                    pricingResultDiv.style.display = 'block';
+                    return;
+                }
+
+                var baseCostResult = calculate_monthly_cost(numSubs);
+                var baseCost = parseFloat(baseCostResult.total_monthly_cost_all_subjects);
+
+                var additionalCost = 0;
+                var tierType = tierTypeSelect.value;
+                var instTier = document.getElementById('institutionalTier').value;
+                var countryTier = document.getElementById('countryTier').value;
+
+                var zeroCostInstTiers = ['Tier 3', 'Tier 4', 'Tier 5'];
+                var zeroCostCountryTiers = ['Tier 2', 'Tier 3'];
+
+                var feeApplies = false;
+                if (tierType === 'institutional') {
+                    if (!zeroCostInstTiers.includes(instTier)) {
+                        feeApplies = true;
+                    }
+                } else {
+                    if (!zeroCostCountryTiers.includes(countryTier)) {
+                        feeApplies = true;
+                    }
+                }
+
+                if (feeApplies) {
+                    var effectiveSubs = Math.min(numSubs, 200);
+                    additionalCost = 15 * effectiveSubs;
+                }
+
+                var totalCost = baseCost + additionalCost;
+                pricingResultDiv.innerHTML =
+                    '<p><i class="bi bi-cloud me-2"></i>Base Infrastructure Cost (Cloud): <strong>$' + baseCost.toFixed(2) + ' / month</strong></p>' +
+                    '<p><i class="bi bi-building me-2"></i>Tier License Cost: <strong>$' + additionalCost.toFixed(2) + ' / month</strong></p>' +
+                    '<hr>' +
+                    '<p class="fs-5 mb-0"><strong><i class="bi bi-cash-stack me-2"></i>Total Estimated Cost: $' + totalCost.toFixed(2) + ' / month</strong></p>' +
+                    '<hr>' +
+                    '<small class="text-muted"><strong>NOTE:</strong> Pricing excludes customization, training, support and consulting services (if required). Estimated infrastructure cost is based on cloud hosting. For on-premise hosting, all source code is made available to support installation and configuration.</small>';
+
+                pricingResultDiv.style.display = 'block';
+            });
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const demoBtn = document.getElementById('demoBtn');
+        const demoModal = document.getElementById('demoModal');
+        const closeDemo = document.getElementById('closeDemo');
+        const demoVideo = document.getElementById('demoVideo');
+
+        if (demoBtn) {
+            demoBtn.addEventListener('click', function () {
+                demoModal.style.display = 'flex';
+
+                // Ensure play happens AFTER modal is visible
+                setTimeout(() => {
+                    demoVideo.currentTime = 0;
+                    demoVideo.play();
+                }, 50);
+            });
+        }
+
+
+        function closeDemoModal() {
+            demoModal.style.display = 'none';
+            demoVideo.pause();
+        }
+
+        closeDemo.addEventListener('click', closeDemoModal);
+
+        // Close when clicking outside the video container
+        demoModal.addEventListener('click', function (e) {
+            if (e.target === demoModal) {
+                closeDemoModal();
+            }
+        });
+
+        // Close on ESC key
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && demoModal.style.display === 'flex') {
+                closeDemoModal();
+            }
+        });
+    });
+
+</script>
+{% endblock %}

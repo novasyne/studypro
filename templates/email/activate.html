@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activate Your STUDYPRO Account</title>
+    <style>
+        /* Reset and base styles for email */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            color: #1e293b;
+            background-color: #f0f4f8;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .email-wrapper {
+            width: 100%;
+            max-width: 600px;
+            margin: 40px auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+        }
+
+        .email-header {
+            background: linear-gradient(135deg, #0f4c81 0%, #0a3a63 100%);
+            padding: 32px 40px;
+            text-align: center;
+        }
+
+        .email-header h1 {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+
+        .email-header p {
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 14px;
+            margin: 8px 0 0;
+        }
+
+        .email-body {
+            padding: 40px;
+        }
+
+        .welcome-icon {
+            width: 64px;
+            height: 64px;
+            background: linear-gradient(135deg, #00b894 0%, #00a381 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+        }
+
+        .welcome-icon svg {
+            width: 32px;
+            height: 32px;
+            fill: #ffffff;
+        }
+
+        .email-body h2 {
+            color: #1e293b;
+            font-size: 20px;
+            font-weight: 700;
+            margin: 0 0 16px;
+            text-align: center;
+        }
+
+        .email-body p {
+            color: #64748b;
+            font-size: 15px;
+            margin: 0 0 24px;
+            text-align: center;
+        }
+
+        .cta-wrapper {
+            text-align: center;
+            margin: 32px 0;
+        }
+
+        .cta-button {
+            display: inline-block;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #0f4c81 0%, #1a6bb5 100%);
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(15, 76, 129, 0.3);
+        }
+
+        .fallback-link {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 24px 0;
+        }
+
+        .fallback-link p {
+            color: #64748b;
+            font-size: 13px;
+            margin: 0 0 8px;
+            text-align: left;
+        }
+
+        .fallback-link a {
+            color: #0f4c81;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .expiry-notice {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background-color: #fef3c7;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            padding: 12px 16px;
+            margin: 24px 0;
+        }
+
+        .expiry-notice svg {
+            width: 20px;
+            height: 20px;
+            fill: #92400e;
+            flex-shrink: 0;
+        }
+
+        .expiry-notice p {
+            color: #92400e;
+            font-size: 13px;
+            margin: 0;
+            text-align: left;
+        }
+
+        .email-footer {
+            background-color: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            padding: 24px 40px;
+            text-align: center;
+        }
+
+        .email-footer p {
+            color: #94a3b8;
+            font-size: 13px;
+            margin: 0 0 8px;
+        }
+
+        .email-footer .team-signature {
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .security-note {
+            color: #94a3b8;
+            font-size: 12px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        /* Mobile responsiveness */
+        @media only screen and (max-width: 600px) {
+            .email-wrapper {
+                margin: 20px;
+                border-radius: 8px;
+            }
+
+            .email-header,
+            .email-body,
+            .email-footer {
+                padding: 24px;
+            }
+
+            .email-header h1 {
+                font-size: 20px;
+            }
+
+            .cta-button {
+                padding: 12px 24px;
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <div class="email-header">
+            <h1>STUDYPRO</h1>
+            <p>Clinical Trial Management Platform</p>
+        </div>
+
+        <div class="email-body">
+            <div class="welcome-icon">
+                <!-- Checkmark icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                </svg>
+            </div>
+
+            <h2>Welcome to STUDYPRO!</h2>
+            
+            <p>
+                Thanks for signing up! Please click the button below to confirm your email address 
+                and activate your account.
+            </p>
+
+            <div class="cta-wrapper">
+                <a href="{{ confirm_url }}" class="cta-button">
+                    Activate My Account
+                </a>
+            </div>
+
+            <div class="fallback-link">
+                <p>If the button doesn't work, copy and paste this link into your browser:</p>
+                <a href="{{ confirm_url }}">{{ confirm_url }}</a>
+            </div>
+
+            <div class="expiry-notice">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+                </svg>
+                <p>This activation link will expire in <strong>one hour</strong>.</p>
+            </div>
+        </div>
+
+        <div class="email-footer">
+            <p>Thanks for joining us,</p>
+            <p class="team-signature">The Novasyne Team</p>
+            
+            <p class="security-note">
+                If you did not create an account with STUDYPRO, you can safely ignore this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

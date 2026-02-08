@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}Best Practices Guide{% endblock %}
+
+{% block head %}
+{{ super() }}
+<style>
+    .accordion-button {
+        font-weight: 600;
+        font-size: 1.1rem;
+        color: #333; 
+    }
+
+    .accordion-button:not(.collapsed) {
+        color: #ffffff; 
+        background-color: #20519c; 
+        box-shadow: inset 0 -1px 0 rgba(0, 0, 0, .125);
+    }
+
+    /* Arrow icon color fix for active state */
+    .accordion-button:not(.collapsed)::after {
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+    }
+
+    .accordion-button:focus {
+        z-index: 3;
+        border-color: #8ab0e6; 
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(32, 81, 156, 0.25);
+    }
+    
+    .accordion-body h5 {
+        color: #20519c; 
+        font-weight: 700;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+        border-bottom: 1px solid #dee2e6;
+        padding-bottom: 5px;
+    }
+    
+    .accordion-body p, .accordion-body li {
+        text-align: justify;
+        line-height: 1.6;
+        color: #333;
+    }
+
+    .accordion-body ul {
+        margin-top: 0.5rem;
+    }
+
+    .accordion-body code {
+        font-size: 0.875em;
+        color: #d63384;
+        word-wrap: break-word;
+        background-color: #f8f9fa;
+        padding: 2px 4px;
+        border-radius: 4px;
+    }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<body data-page-name="best_practices_guide">
+    <div class="container-fluid">
+        <br /><br />
+        
+        <div class="bg-white rounded shadow p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h3 class="mb-0">STUDYPRO Best Practices Guide</h3>
+                <a href="{{ url_for('main_app') }}" class="btn btn-primary"><i class="bi bi-skip-backward button-icon me-1"></i>Back to Dashboard</a>
+            </div>
+
+            <p class="lead" style="font-size: 1rem; text-align: justify;">
+                This guide provides step-by-step best practices for managing a clinical trial within the STUDYPRO platform. Following these procedures will help ensure your trial is managed efficiently, effectively, and in accordance with Good Clinical Practice (GCP) principles.
+            </p>
+
+            <hr/>
+
+            <div class="accordion" id="bestPracticesAccordion">
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingOne">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                            Phase 1: Trial Registration & Setup
+                        </button>
+                    </h2>
+                    <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#bestPracticesAccordion">
+                        <div class="accordion-body">
+                            <p>Thorough planning and protocol design are the cornerstones of a successful clinical trial. The STUDYPRO setup wizard translates your approved protocol into a digital, enforceable framework.</p>
+
+                            <h5>1. Initial Study Registration</h5>
+                            <p><strong>Best Practice:</strong> Begin with a final, ethics-approved protocol. This document is your "source of truth."</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li><strong>Select Study Type:</strong> Choose the Study Type (e.g., "Interventional," "Observational") that best matches your protocol. This loads predefined templates, ensuring consistency.</li>
+                                <li><strong>Configure Study Settings:</strong> This is a critical quality control step.
+                                    <ul>
+                                        <li><strong>Allowed Data Types:</strong> First, select the <em>types</em> of data you will collect (e.g., 'Allow Biological Samples', 'Allow Scales', 'Allow EEG Data'). This filters the biomarker list.</li>
+                                        <li><strong>Allowed Biomarkers:</strong> From the filtered list, <em>only</em> select the specific biomarkers and scales specified in your protocol.</li>
+                                        <li><strong>Enable AI Features:</strong> If your protocol includes exploratory analysis, check this box and provide your AI API Key. This enables advanced AI analytics.</li>
+                                    </ul>
+                                </li>
+                            </ul>
+
+                            <h5>2. Define Study Cohorts</h5>
+                            <p><strong>Best Practice:</strong> Clearly define your study arms or cohorts as specified in the protocol's statistical analysis plan.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li>Use the form to create your Cohort records (e.g., "Treatment Group," "Placebo Group").</li>
+                                <li>Be descriptive. The Group Name and Description will be used in all analytics, so clarity is essential.</li>
+                            </ul>
+
+                            <h5>3. Define Details & Team</h5>
+                            <p><strong>Best Practice:</strong> Assemble an experienced, qualified team and clearly document roles and responsibilities.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li><strong>Add Participants (Staff):</strong> Add all research personnel as study participants.</li>
+                                <li><strong>Assign PI:</strong> You <em>must</em> assign one user as "Principal Investigator." This establishes a clear line of authority and responsibility for the trial.</li>
+                                <li><strong>Link Yourself:</strong> You must add your own profile to the study to gain access.</li>
+                            </ul>
+
+                            <h5>4. Upload Essential Documents</h5>
+                            <p><strong>Best Practice:</strong> Maintain a Trial Master File (TMF) with all essential documents.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li>Immediately after creation, go to the Manage page and use the "Documents" button.</li>
+                                <li>Upload the final, approved Study Protocol, Ethics Approval Letter, and Investigator's Brochure.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingTwo">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                            Phase 2: Ongoing Trial Management
+                        </button>
+                    </h2>
+                    <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#bestPracticesAccordion">
+                        <div class="accordion-body">
+                            <p>This phase focuses on participant safety and data integrity, adhering to the ALCOA+ principles (Attributable, Legible, Contemporaneous, Original, Accurate, Complete, Consistent, Enduring, and Available).</p>
+
+                            <h5>1. Subject Management</h5>
+                            <p><strong>Best Practice:</strong> Protect participant confidentiality and meticulously track consent.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li><strong>De-identification:</strong> When creating a new Subject, the External Subject Code is the most important field. This code (e.g., "S-001") should be used on all data labels.</li>
+                                <li><strong>Assign Cohort:</strong> Immediately assign the Subject to their correct Cohort for accurate analysis.</li>
+                                <li><strong>Manage Consent:</strong> Use the "Consent" button for <em>every</em> subject <em>before</em> performing any study procedures.</li>
+                                <li><strong>Log Medical History:</strong> Use the "History" button to record the subject's pre-trial baseline, including known diagnoses, historical medications, and associated clinicians.</li>
+                                <li><strong>Withdrawal:</strong> If a subject withdraws, immediately update their record with a withdrawal date.</li>
+                            </ul>
+
+                            <h5>2. Data Collection</h5>
+                            <p><strong>Best Practice:</strong> Data must be entered contemporaneously and accurately in a centralized Electronic Data Capture (EDC) system.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li><strong>Centralized Entry:</strong> Use the Study Recordings page as your single source of truth for all data. You can also use the <strong>Excel Import</strong> feature for bulk-uploading biomarker/scale data.</li>
+                                <li><strong>Contemporaneous:</strong> Enter data as soon as possible after collection.</li>
+                                <li><strong>Accurate:</strong>
+                                    <ul>
+                                        <li><strong>Biomarkers & Scales:</strong> The "New Recording" form is filtered by your StudySettings. You <em>cannot</em> enter a biomarker (e.g., 'CRP') or scale (e.g., 'PHQ-9') that wasn't approved in Phase 1.</li>
+                                        <li><strong>Symptoms & Adverse Events:</strong> Use the MedDRA search tool in the form to accurately code verbatim reports into standardized terminology.</li>
+                                        <li><strong>Medications:</strong> Log all concomitant medications, including dose and route, as they are reported.</li>
+                                        <li><strong>EEG/Wearable:</strong> Select the correct device. The system uploads the file to Azure Blob Storage and links the content to the StudyRecording. You can review and <strong>visualize</strong> uploaded EEG data directly from the recordings table.</li>
+                                    </ul>
+                                </li>
+                            </ul>
+
+                            <h5>3. Data Governance & Traceability</h5>
+                            <p><strong>Best Practice:</strong> All changes to data must be traceable, leaving a clear audit trail.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li>The platform <em>automatically</em> supports this by creatng audit log entries for every single] C/U/D action on all recording data (Biomarkers, Symptoms, AEs, Medications, EEG, Wearable).</li>
+                                <li><strong>PI/Admin Duty:</strong> Periodically visit the Audit Log page to review data changes, especially unexpected deletions or modifications.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingThree">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                            Phase 3: Financial Management
+                        </button>
+                    </h2>
+                    <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#bestPracticesAccordion">
+                        <div class="accordion-body">
+                            <p>Poor financial management is a primary reason for trial failure. Real-time monitoring is essential.</p>
+                            
+                            <h5>1. Set the Budget</h5>
+                            <p><strong>Best Practice:</strong> Establish a comprehensive budget covering all trial phases and costs (personnel, procedures, admin).</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li>For each study, record the total initial budget amount. This creates the first BUDGET transaction in the Financial Ledger.</li>
+                            </ul>
+
+                            <h5>2. Track Expenses in Real-Time</h5>
+                            <p><strong>Best Practice:</strong> Log all expenses as they occur.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li>Use the "Add Expense" button on the Finances page for <em>all</em> costs.</li>
+                                <li>Assign the correct Expense Category (e.g., "Lab Supplies," "Participant Reimbursement") for granular analysis.</li>
+                                <li>Use "Top-up Budget" <em>only</em> for new funding tranches (e.g., additional grants).</li>
+                            </ul>
+
+                            <h5>3. Monitor Financial Health</h5>
+                            <p><strong>Best Practice:</strong> Continuously monitor spending against the budget to identify overspending early.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li>The "Financial Burn Rate vs Budget" chart on the Study Status page is your primary tool.</li>
+                                <li>The PI/Manager should review this chart weekly to forecast shortfalls and manage resources proactively.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingFour">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
+                            Phase 4: Analytics & Insights
+                        </button>
+                    </h2>
+                    <div id="collapseFour" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#bestPracticesAccordion">
+                        <div class="accordion-body">
+                            <p>Use data to make informed, data-driven decisions throughout the trial, not just at the end.</p>
+
+                            <h5>1. High-Level Trial Monitoring</h5>
+                            <p><strong>Best Practice:</strong> Maintain real-time oversight of trial progress and participant engagement.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li><strong>KPIs:</strong> Check the key performance indicators (KPIs) at the top of the dashboard daily: Active Subjects, Total Recordings, Remaining Budget.</li>
+                                <li><strong>Enrollment:</strong> Review the "Cumulative Subject Enrollment" chart to ensure you are meeting recruitment targets.</li>
+                                <li><strong>Participant Retention & Safety:</strong> Check the "Subject Events & Flags" table. "Inactive" subjects (no recordings in 30 days) should be contacted immediately to improve retention. This table also provides a crucial at-a-glance summary of recent Adverse Events and Symptoms, allowing for proactive safety monitoring.</li>
+                            </ul>
+
+                            <h5>2. Deep Data Analysis</h5>
+                            <p><strong>Best Practice:</strong> Conduct interim analyses to monitor for safety and efficacy signals.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li><strong>Cohort Comparison:</strong> Use this to run T-Tests, ANOVAs, or view box/violin plots. This is your primary tool for comparing "Treatment" vs. "Control" cohorts.</li>
+                                <li><strong>Subject Over Time:</strong> Use this to track individual participant data, ensuring compliance and monitoring for trends.</li>
+                                <li><strong>Correlation Analysis:</strong> Use this to discover relationships between different biomarkers.</li>
+                                <li><strong>Categorical Analysis:</strong> Use the 'Demographics Summary', 'Event/Symptom Frequency', or 'Concomitant Medication Frequency' analysis types to generate bar charts. This is essential for understanding the distribution of your subject population and the frequency of key events like AEs.</li>
+                                <li><strong>Cohort Distribution Report:</strong> Run this to generate a full baseline characteristics table, comparing demographics, diagnosis history, and medication history across all cohorts.</li>
+                                <li><strong>Comprehensive Correlation:</strong> Use this to discover complex relationships across <em>all</em> data types (e.g., correlating demographics with biomarker means and symptom counts).</li>
+                            </ul>
+
+                            <h5>3. AI-Driven Automated Analysis</h5>
+                            <p><strong>Best Practice:</strong> Leverage advanced technology to accelerate insights.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ol>
+                                <li><strong>Upload Knowledge:</strong> Go to the "Manage Knowledge Base" page. Upload your study protocol, key papers, and other relevant documents.</li>
+                                <li><strong>Build Store:</strong> You <em>must</em> click "Build Vector Store." to process your documents into the knowledge base.</li>
+                                <li><strong>Run Analysis:</strong> In the Analytics page, run an "Automated Analysis." This process will find the most relevant information from your documents and feed them to the AI <em>along with your trial data</em> (including demographics, biomarkers, AEs, and symptoms), providing a rich, context-aware report.</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingFive">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
+                            Phase 5: Trial Completion & Data Retention
+                        </button>
+                    </h2>
+                    <div id="collapseFive" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#bestPracticesAccordion">
+                        <div class="accordion-body">
+                            <p>Your responsibility does not end when the last subject is "off-study." Data must be securely archived for decades.</p>
+
+                            <h5>1. Finalize the Study</h5>
+                            <p><strong>Best Practice:</strong> Ensure all data is clean, complete, and all queries are resolved.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li>Perform a final review of all subject data and study recordings.</li>
+                                <li>Set the study status to "Completed".</li>
+                                <li>Ensure all final invoices and payments are logged.</li>
+                            </ul>
+
+                            <h5>2. Create the Final Trial Archive</h5>
+                            <p><strong>Best Practice:</strong> Securely archive all essential documents and data in a stable, complete, and accessible format for the full regulatory retention period (e.g., 15-25+ years).</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <ul>
+                                <li>Use the "Export Study" feature. This is your primary tool for long-term retention.</li>
+                                <li>The Export function creates a single, self-contained ZIP file containing all records, study documents, and raw electronic data files.</li>
+                                <li><strong>Action:</strong> Download this ZIP file. This is your Final Trial Archive. It must be stored in your institution's secure, long-term, read-only archive.</li>
+                            </ul>
+
+                            <h5>3. Data Revocation</h5>
+                            <p><strong>Best Practice:</strong> Data should only be destroyed after the mandated retention period, or under explicit legal/ethical order.</p>
+                            <p><strong>Platform Action:</strong></p>
+                            <div class="alert alert-danger" role="alert">
+                                <strong>Use with Extreme Caution.</strong> The "Revoke Study" button is a permanent deletion tool. This is irreversible and deletes all database records and all associated files and electronic data.
+                            </div>
+                            
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <br /><br /> </div>
+</body>
+{% endblock %}
