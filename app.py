@@ -65,8 +65,9 @@ from models import (
     EEG, Wearable, FinancialLedger, ExpenseCategory, AuditLog,
     StudySettings, StudyKnowledge, StudyKnowledgeVector,
     MedDRA, SubjectSymptom, SubjectAdverseEvent, SubjectMedicationTaken,
-    StudyRecordingImage
+    StudyRecordingImage, study_settings_biomarker_types
 )
+
 import mne
 import tempfile
 import warnings
@@ -76,6 +77,10 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import base64
 import requests
+
+from flask import request, redirect, url_for, flash, render_template
+from flask_mail import Message
+import re
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -734,9 +739,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True').lower() in ['true', 'on', '1']
-app.config['MAIL_USERNAME'] = 'apikey'
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
-app.config['MAIL_DEFAULT_SENDER'] = 'admin@novasyne.com'
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 
 db.init_app(app)
 mail.init_app(app)
@@ -1493,11 +1498,6 @@ def visualize_eeg(recording_id):
     """
     recording = StudyRecording.query.get_or_404(recording_id)
     subject = Subject.query.get_or_404(recording.subject_id)
-
-    # --- FIX: Convert the UUID from recording.study_id to a string ---
-    # The Study.study_id column is String(36), but recording.study_id is
-    # a UUID object (from the StudyRecording model).
-    # We must pass a string to get_or_404() to match the Study model's definition.
     study = Study.query.get_or_404(str(recording.study_id))
     
     # Check for authorization
@@ -3413,14 +3413,40 @@ def add_recording(study_id):
 @login_required
 def export_study(study_id):
     """
-    Exports all study data including database tables and blob storage files as a single ZIP file.
+    Exports ALL study data including database tables and blob storage files as a single ZIP file.
+    
+    Exported structure:
+        study_metadata.csv          - Study details and type
+        study_settings.csv          - Study configuration flags
+        study_arms.csv              - Study arm definitions
+        subjects.csv                - Full subject demographics
+        subject_clinicians.csv      - Clinician assignments per subject
+        subject_consents.csv        - Consent records
+        subject_contacts.csv        - Subject contact information
+        subject_diagnoses.csv       - Subject diagnoses
+        subject_medications.csv     - Subject medication history
+        recordings.csv              - Base recording sessions
+        recordings_biomarkers.csv   - Biomarker values with type info
+        recordings_eeg.csv          - EEG recording metadata
+        recordings_wearable.csv     - Wearable recording metadata
+        recordings_imaging.csv      - Imaging recording metadata
+        symptoms.csv                - Reported symptoms (MedDRA coded)
+        adverse_events.csv          - Adverse events (MedDRA coded)
+        medications_taken.csv       - Concomitant medications taken per recording
+        financial_ledger.csv        - Financial transactions and budget
+        audit_log.csv               - Full audit trail
+        DOCUMENTS/                  - Study-level document files
+        SUBJECT_DOCUMENTS/          - Subject-level document files
+        EEG/                        - EEG blob storage files
+        WEARABLE/                   - Wearable blob storage files
+        IMAGING/                    - Imaging blob storage files
+        KNOWLEDGE/                  - Uploaded knowledge PDF files
     """
     study = Study.query.get_or_404(study_id)
-    
+
     memory_file = BytesIO()
 
     connect_str = os.environ.get('AZURE_BLOB')
-    blob_service_client = None
     container_client = None
     if connect_str:
         try:
@@ -3429,82 +3455,498 @@ def export_study(study_id):
         except Exception as e:
             app.logger.error(f"Failed to connect to Azure Blob Storage: {e}")
 
+    def download_blob_to_zip(zf, uri, folder_name):
+        """Helper to download a blob from Azure and write it into the ZIP under the given folder."""
+        try:
+            blob_name = '/'.join(uri.split('/')[4:])
+            file_name = os.path.basename(blob_name)
+            blob_client = container_client.get_blob_client(blob_name)
+            downloader = blob_client.download_blob()
+            zf.writestr(f'{folder_name}/{file_name}', downloader.readall())
+        except Exception as e:
+            app.logger.error(f"Failed to download blob {uri}: {e}")
+            zf.writestr(f'{folder_name}/ERROR_downloading_{os.path.basename(uri)}.txt', str(e))
+
+    def write_csv_to_zip(zf, filename, query_or_df):
+        """Helper to execute a query (or accept a DataFrame) and write it as CSV into the ZIP."""
+        if isinstance(query_or_df, pd.DataFrame):
+            df = query_or_df
+        else:
+            df = pd.read_sql(query_or_df.statement, db.engine)
+        if not df.empty:
+            zf.writestr(filename, df.to_csv(index=False, encoding='utf-8'))
 
     with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-        # ... (Existing CSV exports for study, participants, arms, subjects, etc. remain the same) ...
-        # [Code omitted for brevity: copy existing logic for study.csv, participants.csv, etc.]
-        
-        # ... (Existing document exports remain the same) ...
 
-        # --- UPDATED RECORDINGS EXPORT ---
-        recordings_query = db.session.query(
-            StudyRecording.recording_id, StudyRecording.recording_datetime, StudyRecording.recording_type,
+        # =====================================================================
+        # 1. STUDY METADATA
+        # =====================================================================
+        study_query = db.session.query(
+            Study.study_id, Study.name, Study.description,
+            Study.start_date, Study.end_date, Study.status,
+            Study.funding_source, Study.budget_amount, Study.currency,
+            Study.principal_investigator_id,
+            Study.created_at, Study.updated_at,
+            StudyType.category.label('study_type_category'),
+            StudyType.study_type.label('study_type')
+        ).outerjoin(
+            StudyType, Study.study_type_id == StudyType.study_type_id
+        ).filter(Study.study_id == study_id)
+
+        write_csv_to_zip(zf, 'study_metadata.csv', study_query)
+
+        # =====================================================================
+        # 2. STUDY SETTINGS
+        # =====================================================================
+        study_settings_query = db.session.query(
+            StudySettings.study_id,
+            StudySettings.ai_enabled,
+            StudySettings.eeg_enabled,
+            StudySettings.wearables_enabled,
+            StudySettings.biological_enabled,
+            StudySettings.scales_enabled
+        ).filter(StudySettings.study_id == study_id)
+        # Note: ai_api_key is intentionally excluded for security
+
+        write_csv_to_zip(zf, 'study_settings.csv', study_settings_query)
+
+        # Allowed biomarkers for this study
+        allowed_biomarkers_query = db.session.query(
+            study_settings_biomarker_types.c.study_id,
+            study_settings_biomarker_types.c.biomarker_id,
+            BiomarkerType.biomarker_name,
+            BiomarkerType.sample_type,
+            BiomarkerType.category_notes
+        ).join(
+            BiomarkerType,
+            study_settings_biomarker_types.c.biomarker_id == BiomarkerType.biomarker_id
+        ).filter(
+            study_settings_biomarker_types.c.study_id == study_id
+        )
+
+        write_csv_to_zip(zf, 'study_settings_allowed_biomarkers.csv', allowed_biomarkers_query)
+
+        # =====================================================================
+        # 3. STUDY ARMS
+        # =====================================================================
+        arms_query = db.session.query(
+            StudyArm.arm_id, StudyArm.study_id,
+            StudyArm.arm_name, StudyArm.description
+        ).filter(StudyArm.study_id == study_id).order_by(StudyArm.arm_name)
+
+        write_csv_to_zip(zf, 'study_arms.csv', arms_query)
+
+        # =====================================================================
+        # 4. SUBJECTS (full demographics)
+        # =====================================================================
+        subjects_query = db.session.query(
+            Subject.subject_id, Subject.external_subject_code,
+            Subject.study_id, Subject.arm_id,
+            StudyArm.arm_name,
+            Subject.status, Subject.enrollment_date, Subject.completion_date,
+            Subject.screen_fail_date, Subject.screen_fail_reason,
+            Subject.withdrawal_reason, Subject.site_identifier,
+            Subject.first_name, Subject.last_name,
+            Subject.gender, Subject.date_of_birth,
+            Subject.ethnicity, Subject.race, Subject.handedness,
+            Subject.pregnancy_status,
+            Subject.city, Subject.state_province, Subject.country, Subject.postal_code,
+            Subject.education_level, Subject.employment_status, Subject.marital_status,
+            Subject.height_cm, Subject.weight_kg,
+            Subject.smoking_status, Subject.alcohol_intake, Subject.physical_activity_level,
+            Subject.consent_date, Subject.withdrawal_date,
+            Subject.created_at, Subject.updated_at
+        ).outerjoin(
+            StudyArm, Subject.arm_id == StudyArm.arm_id
+        ).filter(Subject.study_id == study_id).order_by(Subject.external_subject_code)
+
+        write_csv_to_zip(zf, 'subjects.csv', subjects_query)
+
+        # =====================================================================
+        # 5. SUBJECT CLINICIANS
+        # =====================================================================
+        # Get all subject_ids for this study first
+        study_subject_ids = db.session.query(Subject.subject_id).filter(
+            Subject.study_id == study_id
+        ).subquery()
+
+        clinicians_query = db.session.query(
+            SubjectClinician.clinician_id, SubjectClinician.subject_id,
             Subject.external_subject_code,
-            BiomarkerType.biomarker_name, StudyRecordingBiomarker.biomarker_value,
-            EEG.manufacturer.label('eeg_manufacturer'), EEG.device_type.label('eeg_device_type'), StudyRecordingEEG.data_uri.label('eeg_data_uri'),
-            Wearable.manufacturer.label('wearable_manufacturer'), Wearable.device_name.label('wearable_device_name'), StudyRecordingWearable.data_uri.label('wearable_data_uri'),
-            # --- NEW FIELDS FOR IMAGING ---
-            StudyRecordingImage.image_type.label('image_type'), 
-            StudyRecordingImage.data_uri.label('image_data_uri')
-        ).select_from(StudyRecording)\
-         .join(Subject, StudyRecording.subject_id == Subject.subject_id)\
-         .outerjoin(StudyRecordingBiomarker, StudyRecording.recording_id == StudyRecordingBiomarker.recording_id)\
-         .outerjoin(BiomarkerType, StudyRecordingBiomarker.biomarker_id == BiomarkerType.biomarker_id)\
-         .outerjoin(StudyRecordingEEG, StudyRecording.recording_id == StudyRecordingEEG.recording_id)\
-         .outerjoin(EEG, StudyRecordingEEG.eeg_id == EEG.eeg_id)\
-         .outerjoin(StudyRecordingWearable, StudyRecording.recording_id == StudyRecordingWearable.recording_id)\
-         .outerjoin(Wearable, StudyRecordingWearable.wearable_id == Wearable.wearable_id)\
-         .outerjoin(StudyRecordingImage, StudyRecording.recording_id == StudyRecordingImage.recording_id) \
-         .filter(StudyRecording.study_id == study_id) # <--- Added join to StudyRecordingImage
+            SubjectClinician.first_name, SubjectClinician.last_name,
+            SubjectClinician.specialty, SubjectClinician.organization,
+            SubjectClinician.city, SubjectClinician.country,
+            SubjectClinician.email, SubjectClinician.phone
+        ).join(
+            Subject, SubjectClinician.subject_id == Subject.subject_id
+        ).filter(SubjectClinician.subject_id.in_(study_subject_ids))
 
-        df_recordings = pd.read_sql(recordings_query.statement, db.engine)
-        if not df_recordings.empty:
-            zf.writestr('recordings.csv', df_recordings.to_csv(index=False, encoding='utf-8'))
+        write_csv_to_zip(zf, 'subject_clinicians.csv', clinicians_query)
 
+        # =====================================================================
+        # 6. SUBJECT CONSENTS
+        # =====================================================================
+        consents_query = db.session.query(
+            SubjectConsent.consent_id, SubjectConsent.subject_id,
+            Subject.external_subject_code,
+            SubjectConsent.consent_version, SubjectConsent.consent_type,
+            SubjectConsent.signed_at, SubjectConsent.withdrawn_at
+        ).join(
+            Subject, SubjectConsent.subject_id == Subject.subject_id
+        ).filter(SubjectConsent.subject_id.in_(study_subject_ids))
+
+        write_csv_to_zip(zf, 'subject_consents.csv', consents_query)
+
+        # =====================================================================
+        # 7. SUBJECT CONTACTS
+        # =====================================================================
+        contacts_query = db.session.query(
+            SubjectContact.contact_id, SubjectContact.subject_id,
+            Subject.external_subject_code,
+            SubjectContact.contact_type, SubjectContact.contact_value,
+            SubjectContact.preferred, SubjectContact.verified
+        ).join(
+            Subject, SubjectContact.subject_id == Subject.subject_id
+        ).filter(SubjectContact.subject_id.in_(study_subject_ids))
+
+        write_csv_to_zip(zf, 'subject_contacts.csv', contacts_query)
+
+        # =====================================================================
+        # 8. SUBJECT DIAGNOSES
+        # =====================================================================
+        diagnoses_query = db.session.query(
+            SubjectDiagnosis.id, SubjectDiagnosis.subject_id,
+            Subject.external_subject_code,
+            SubjectDiagnosis.diagnosis_code, SubjectDiagnosis.diagnosis_description,
+            SubjectDiagnosis.diagnosis_date, SubjectDiagnosis.status,
+            SubjectDiagnosis.primary_diagnosis
+        ).join(
+            Subject, SubjectDiagnosis.subject_id == Subject.subject_id
+        ).filter(SubjectDiagnosis.subject_id.in_(study_subject_ids))
+
+        write_csv_to_zip(zf, 'subject_diagnoses.csv', diagnoses_query)
+
+        # =====================================================================
+        # 9. SUBJECT MEDICATIONS (medical history)
+        # =====================================================================
+        medications_query = db.session.query(
+            SubjectMedication.id, SubjectMedication.subject_id,
+            Subject.external_subject_code,
+            SubjectMedication.medication_name, SubjectMedication.dose,
+            SubjectMedication.route, SubjectMedication.start_date,
+            SubjectMedication.end_date, SubjectMedication.indication,
+            SubjectMedication.currently_taking
+        ).join(
+            Subject, SubjectMedication.subject_id == Subject.subject_id
+        ).filter(SubjectMedication.subject_id.in_(study_subject_ids))
+
+        write_csv_to_zip(zf, 'subject_medications.csv', medications_query)
+
+        # =====================================================================
+        # 10. BASE RECORDINGS
+        # =====================================================================
+        recordings_query = db.session.query(
+            StudyRecording.recording_id, StudyRecording.study_id,
+            StudyRecording.subject_id,
+            Subject.external_subject_code,
+            StudyArm.arm_name,
+            StudyRecording.recording_datetime,
+            StudyRecording.recording_type
+        ).join(
+            Subject, StudyRecording.subject_id == Subject.subject_id
+        ).outerjoin(
+            StudyArm, Subject.arm_id == StudyArm.arm_id
+        ).filter(
+            StudyRecording.study_id == study_id
+        ).order_by(StudyRecording.recording_datetime)
+
+        write_csv_to_zip(zf, 'recordings.csv', recordings_query)
+
+        # =====================================================================
+        # 11. RECORDING BIOMARKERS
+        # =====================================================================
+        biomarkers_query = db.session.query(
+            StudyRecordingBiomarker.recording_id,
+            StudyRecordingBiomarker.study_id,
+            StudyRecordingBiomarker.subject_id,
+            Subject.external_subject_code,
+            StudyRecording.recording_datetime,
+            BiomarkerType.biomarker_name,
+            BiomarkerType.sample_type,
+            StudyRecordingBiomarker.biomarker_value
+        ).join(
+            Subject, StudyRecordingBiomarker.subject_id == Subject.subject_id
+        ).join(
+            StudyRecording, StudyRecordingBiomarker.recording_id == StudyRecording.recording_id
+        ).join(
+            BiomarkerType, StudyRecordingBiomarker.biomarker_id == BiomarkerType.biomarker_id
+        ).filter(
+            StudyRecordingBiomarker.study_id == study_id
+        ).order_by(StudyRecording.recording_datetime)
+
+        write_csv_to_zip(zf, 'recordings_biomarkers.csv', biomarkers_query)
+
+        # =====================================================================
+        # 12. RECORDING EEG
+        # =====================================================================
+        eeg_query = db.session.query(
+            StudyRecordingEEG.recording_id,
+            StudyRecordingEEG.study_id,
+            StudyRecordingEEG.subject_id,
+            Subject.external_subject_code,
+            StudyRecording.recording_datetime,
+            EEG.manufacturer.label('eeg_manufacturer'),
+            EEG.device_type.label('eeg_device_type'),
+            StudyRecordingEEG.data_uri.label('eeg_data_uri')
+        ).join(
+            Subject, StudyRecordingEEG.subject_id == Subject.subject_id
+        ).join(
+            StudyRecording, StudyRecordingEEG.recording_id == StudyRecording.recording_id
+        ).outerjoin(
+            EEG, StudyRecordingEEG.eeg_id == EEG.eeg_id
+        ).filter(
+            StudyRecordingEEG.study_id == study_id
+        ).order_by(StudyRecording.recording_datetime)
+
+        df_eeg = pd.read_sql(eeg_query.statement, db.engine)
+        if not df_eeg.empty:
+            zf.writestr('recordings_eeg.csv', df_eeg.to_csv(index=False, encoding='utf-8'))
             if container_client:
-                # ... (Existing EEG loop) ...
-                for uri in df_recordings['eeg_data_uri'].dropna().unique():
-                    try:
-                        blob_name = '/'.join(uri.split('/')[4:])
-                        file_name = os.path.basename(blob_name)
-                        blob_client = container_client.get_blob_client(blob_name)
-                        downloader = blob_client.download_blob()
-                        zf.writestr(f'EEG/{file_name}', downloader.readall())
-                    except Exception as e:
-                        app.logger.error(f"Failed to download blob {uri}: {e}")
-                        zf.writestr(f'EEG/ERROR_downlading_{os.path.basename(uri)}.txt', str(e))
+                for uri in df_eeg['eeg_data_uri'].dropna().unique():
+                    download_blob_to_zip(zf, uri, 'EEG')
 
-                # ... (Existing Wearable loop) ...
-                for uri in df_recordings['wearable_data_uri'].dropna().unique():
-                    try:
-                        blob_name = '/'.join(uri.split('/')[4:])
-                        file_name = os.path.basename(blob_name)
-                        blob_client = container_client.get_blob_client(blob_name)
-                        downloader = blob_client.download_blob()
-                        zf.writestr(f'WEARABLE/{file_name}', downloader.readall())
-                    except Exception as e:
-                        app.logger.error(f"Failed to download blob {uri}: {e}")
-                        zf.writestr(f'WEARABLE/ERROR_downloading_{os.path.basename(uri)}.txt', str(e))
+        # =====================================================================
+        # 13. RECORDING WEARABLE
+        # =====================================================================
+        wearable_query = db.session.query(
+            StudyRecordingWearable.recording_id,
+            StudyRecordingWearable.study_id,
+            StudyRecordingWearable.subject_id,
+            Subject.external_subject_code,
+            StudyRecording.recording_datetime,
+            Wearable.manufacturer.label('wearable_manufacturer'),
+            Wearable.device_name.label('wearable_device_name'),
+            Wearable.wearable_type.label('wearable_type'),
+            Wearable.wearable_location.label('wearable_location'),
+            StudyRecordingWearable.data_uri.label('wearable_data_uri')
+        ).join(
+            Subject, StudyRecordingWearable.subject_id == Subject.subject_id
+        ).join(
+            StudyRecording, StudyRecordingWearable.recording_id == StudyRecording.recording_id
+        ).outerjoin(
+            Wearable, StudyRecordingWearable.wearable_id == Wearable.wearable_id
+        ).filter(
+            StudyRecordingWearable.study_id == study_id
+        ).order_by(StudyRecording.recording_datetime)
 
-                # --- NEW IMAGING DOWNLOAD LOOP ---
-                for uri in df_recordings['image_data_uri'].dropna().unique():
-                    try:
-                        blob_name = '/'.join(uri.split('/')[4:])
-                        file_name = os.path.basename(blob_name)
-                        blob_client = container_client.get_blob_client(blob_name)
-                        downloader = blob_client.download_blob()
-                        zf.writestr(f'IMAGING/{file_name}', downloader.readall())
-                    except Exception as e:
-                        app.logger.error(f"Failed to download blob {uri}: {e}")
-                        zf.writestr(f'IMAGING/ERROR_downloading_{os.path.basename(uri)}.txt', str(e))
+        df_wearable = pd.read_sql(wearable_query.statement, db.engine)
+        if not df_wearable.empty:
+            zf.writestr('recordings_wearable.csv', df_wearable.to_csv(index=False, encoding='utf-8'))
+            if container_client:
+                for uri in df_wearable['wearable_data_uri'].dropna().unique():
+                    download_blob_to_zip(zf, uri, 'WEARABLE')
+
+        # =====================================================================
+        # 14. RECORDING IMAGING
+        # =====================================================================
+        imaging_query = db.session.query(
+            StudyRecordingImage.recording_id,
+            StudyRecordingImage.study_id,
+            StudyRecordingImage.subject_id,
+            Subject.external_subject_code,
+            StudyRecording.recording_datetime,
+            StudyRecordingImage.image_type,
+            StudyRecordingImage.data_uri.label('image_data_uri')
+        ).join(
+            Subject, StudyRecordingImage.subject_id == Subject.subject_id
+        ).join(
+            StudyRecording, StudyRecordingImage.recording_id == StudyRecording.recording_id
+        ).filter(
+            StudyRecordingImage.study_id == study_id
+        ).order_by(StudyRecording.recording_datetime)
+
+        df_imaging = pd.read_sql(imaging_query.statement, db.engine)
+        if not df_imaging.empty:
+            zf.writestr('recordings_imaging.csv', df_imaging.to_csv(index=False, encoding='utf-8'))
+            if container_client:
+                for uri in df_imaging['image_data_uri'].dropna().unique():
+                    download_blob_to_zip(zf, uri, 'IMAGING')
+
+        # =====================================================================
+        # 15. SYMPTOMS
+        # =====================================================================
+        symptoms_query = db.session.query(
+            SubjectSymptom.recording_id,
+            SubjectSymptom.study_id,
+            SubjectSymptom.subject_id,
+            Subject.external_subject_code,
+            StudyRecording.recording_datetime,
+            SubjectSymptom.symptom_verbatim,
+            SubjectSymptom.meddra_code,
+            SubjectSymptom.meddra_term,
+            SubjectSymptom.severity,
+            MedDRA.soc_name.label('meddra_soc'),
+            MedDRA.hlt_name.label('meddra_hlt'),
+            MedDRA.pt_name.label('meddra_pt')
+        ).join(
+            Subject, SubjectSymptom.subject_id == Subject.subject_id
+        ).join(
+            StudyRecording, SubjectSymptom.recording_id == StudyRecording.recording_id
+        ).outerjoin(
+            MedDRA, SubjectSymptom.meddra_code == MedDRA.meddra_code
+        ).filter(
+            SubjectSymptom.study_id == study_id
+        ).order_by(StudyRecording.recording_datetime)
+
+        write_csv_to_zip(zf, 'symptoms.csv', symptoms_query)
+
+        # =====================================================================
+        # 16. ADVERSE EVENTS
+        # =====================================================================
+        ae_query = db.session.query(
+            SubjectAdverseEvent.recording_id,
+            SubjectAdverseEvent.study_id,
+            SubjectAdverseEvent.subject_id,
+            Subject.external_subject_code,
+            StudyRecording.recording_datetime,
+            SubjectAdverseEvent.ae_verbatim,
+            SubjectAdverseEvent.meddra_code,
+            SubjectAdverseEvent.meddra_term,
+            SubjectAdverseEvent.is_serious_ae,
+            SubjectAdverseEvent.severity_grade,
+            SubjectAdverseEvent.causality,
+            SubjectAdverseEvent.outcome,
+            MedDRA.soc_name.label('meddra_soc'),
+            MedDRA.hlt_name.label('meddra_hlt'),
+            MedDRA.pt_name.label('meddra_pt')
+        ).join(
+            Subject, SubjectAdverseEvent.subject_id == Subject.subject_id
+        ).join(
+            StudyRecording, SubjectAdverseEvent.recording_id == StudyRecording.recording_id
+        ).outerjoin(
+            MedDRA, SubjectAdverseEvent.meddra_code == MedDRA.meddra_code
+        ).filter(
+            SubjectAdverseEvent.study_id == study_id
+        ).order_by(StudyRecording.recording_datetime)
+
+        write_csv_to_zip(zf, 'adverse_events.csv', ae_query)
+
+        # =====================================================================
+        # 17. MEDICATIONS TAKEN (concomitant meds per recording)
+        # =====================================================================
+        meds_taken_query = db.session.query(
+            SubjectMedicationTaken.recording_id,
+            SubjectMedicationTaken.study_id,
+            SubjectMedicationTaken.subject_id,
+            Subject.external_subject_code,
+            StudyRecording.recording_datetime,
+            SubjectMedicationTaken.medication_name,
+            SubjectMedicationTaken.dose,
+            SubjectMedicationTaken.route,
+            SubjectMedicationTaken.indication,
+            SubjectMedicationTaken.is_concomitant
+        ).join(
+            Subject, SubjectMedicationTaken.subject_id == Subject.subject_id
+        ).join(
+            StudyRecording, SubjectMedicationTaken.recording_id == StudyRecording.recording_id
+        ).filter(
+            SubjectMedicationTaken.study_id == study_id
+        ).order_by(StudyRecording.recording_datetime)
+
+        write_csv_to_zip(zf, 'medications_taken.csv', meds_taken_query)
+
+        # =====================================================================
+        # 18. FINANCIAL LEDGER
+        # =====================================================================
+        financial_query = db.session.query(
+            FinancialLedger.transaction_id,
+            FinancialLedger.study_id,
+            FinancialLedger.transaction_date,
+            FinancialLedger.transaction_type,
+            FinancialLedger.amount,
+            FinancialLedger.description,
+            ExpenseCategory.category_name.label('expense_category'),
+            FinancialLedger.created_at
+        ).outerjoin(
+            ExpenseCategory, FinancialLedger.category_id == ExpenseCategory.category_id
+        ).filter(
+            FinancialLedger.study_id == study_id
+        ).order_by(FinancialLedger.transaction_date)
+
+        write_csv_to_zip(zf, 'financial_ledger.csv', financial_query)
+
+        # =====================================================================
+        # 19. AUDIT LOG
+        # =====================================================================
+        audit_query = db.session.query(
+            AuditLog.audit_log_id,
+            AuditLog.change_datetime,
+            AuditLog.user_email,
+            AuditLog.study_id,
+            AuditLog.subject_id,
+            Subject.external_subject_code,
+            AuditLog.record_id,
+            AuditLog.changed_table,
+            AuditLog.change_type,
+            AuditLog.operation_type,
+            AuditLog.old_value,
+            AuditLog.new_value
+        ).outerjoin(
+            Subject, AuditLog.subject_id == Subject.subject_id
+        ).filter(
+            AuditLog.study_id == study_id
+        ).order_by(AuditLog.change_datetime)
+
+        write_csv_to_zip(zf, 'audit_log.csv', audit_query)
+
+        # =====================================================================
+        # 20. STUDY DOCUMENTS (binary files)
+        # =====================================================================
+        study_docs = StudyDocument.query.filter_by(study_id=study_id).all()
+        for doc in study_docs:
+            try:
+                zf.writestr(f'DOCUMENTS/{doc.filename}', doc.data)
+            except Exception as e:
+                app.logger.error(f"Failed to write study document {doc.filename}: {e}")
+                zf.writestr(f'DOCUMENTS/ERROR_{doc.filename}.txt', str(e))
+
+        # =====================================================================
+        # 21. SUBJECT DOCUMENTS (binary files)
+        # =====================================================================
+        subject_docs = db.session.query(
+            SubjectDocument, Subject.external_subject_code
+        ).join(
+            Subject, SubjectDocument.subject_id == Subject.subject_id
+        ).filter(
+            SubjectDocument.subject_id.in_(study_subject_ids)
+        ).all()
+
+        for doc, subject_code in subject_docs:
+            try:
+                safe_code = subject_code or str(doc.subject_id)
+                zf.writestr(f'SUBJECT_DOCUMENTS/{safe_code}/{doc.filename}', doc.data)
+            except Exception as e:
+                app.logger.error(f"Failed to write subject document {doc.filename}: {e}")
+                zf.writestr(f'SUBJECT_DOCUMENTS/ERROR_{doc.filename}.txt', str(e))
+
+        # =====================================================================
+        # 22. KNOWLEDGE FILES (PDF files)
+        # =====================================================================
+        knowledge_files = StudyKnowledge.query.filter_by(study_id=study_id).all()
+        for kf in knowledge_files:
+            try:
+                zf.writestr(f'KNOWLEDGE/{kf.filename}', kf.data)
+            except Exception as e:
+                app.logger.error(f"Failed to write knowledge file {kf.filename}: {e}")
+                zf.writestr(f'KNOWLEDGE/ERROR_{kf.filename}.txt', str(e))
 
     memory_file.seek(0)
-    
+
     return send_file(
         memory_file,
         mimetype='application/zip',
         as_attachment=True,
-        download_name=f"{study.name.replace(' ', '_')}.zip"
+        download_name=f"{study.name.replace(' ', '_')}_full_export.zip"
     )
 
 
@@ -3761,7 +4203,6 @@ def run_analysis(study_id):
             subjects_df['arm_name'] = subjects_df['arm_id'].map(arm_names_map)
             subject_ids_in_scope = subjects_df['subject_id'].tolist()
 
-            # --- Demographics Analysis ---
             results_html += "<h4>1. Demographic Distribution</h4>"
 
             for field in demographic_fields:
@@ -3788,7 +4229,6 @@ def run_analysis(study_id):
                 percent_pivot = count_pivot.div(count_pivot.loc['Total'], axis=1).fillna(0) * 100
                 results_html += _build_demographic_table(count_pivot, percent_pivot)
 
-            # --- Diagnosis History ---
             diag_df = pd.read_sql(
                 db.session.query(
                     Subject.arm_id, 
@@ -3830,7 +4270,6 @@ def run_analysis(study_id):
                 percent_pivot = diag_pivot.div(diag_pivot.loc['Total Subjects (N)'], axis=1).fillna(0) * 100
                 results_html += _build_distribution_table(diag_pivot, percent_pivot, "Diagnosis", arm_names_list)
 
-            # --- Medication History ---
             med_df = pd.read_sql(
                 db.session.query(
                     Subject.arm_id, 
@@ -5127,7 +5566,7 @@ def generate_demo_data():
                 )
                 db.session.add(new_med)
 
-            # Generate plausible EEG file & derived biomarkers ---
+            # Generate plausible EEG file & derived biomarkers
             if eeg_generation_enabled:
                 try:
                     arm_name = arm_id_to_name_map.get(str(subject.arm_id))
@@ -6134,6 +6573,21 @@ def _download_blob_to_zip(zf, data_uri, zip_path, blob_service_client):
 @app.route('/study/<study_id>/download_multimodal_packet', methods=['POST'])
 @login_required
 def download_multimodal_packet(study_id):
+    """
+    Exports a multimodal analysis packet as a ZIP containing:
+    - A wide-format biomarkers CSV with one row per subject per timepoint
+    - Raw EEG, Wearable, and Imaging files organised by subject/date
+    
+    CSV Structure (matches the canonical import/export template):
+        Arm, Subject, DateTime, {Biomarker columns...}
+    
+    Biomarker column naming:
+        - If sample_type exists: "{SampleType}_{BiomarkerName}" → e.g. Blood_CRP, EEG_AlphaPower, HRV_RMSSD
+        - If sample_type is NULL/empty: "{BiomarkerName}" alone → e.g. Ferritin, GAD7, IL6
+        
+    This preserves the exact naming convention from the biomarker_types table,
+    where some biomarkers have an explicit sample_type prefix and others don't.
+    """
     try:
         study = Study.query.get_or_404(study_id)
         subject_ids = request.form.getlist('subject_ids')
@@ -6146,12 +6600,13 @@ def download_multimodal_packet(study_id):
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else date.min
         except ValueError:
-            start_date = date.min  
+            start_date = date.min
         try:
             end_date = (datetime.strptime(end_date_str, '%Y-%m-%d') + timedelta(days=1)).date() if end_date_str else date.max
         except ValueError:
             end_date = date.max
-        
+
+        # --- Azure Blob Storage connection ---
         connect_str = os.environ.get('AZURE_BLOB')
         blob_service_client = None
         if connect_str:
@@ -6164,103 +6619,142 @@ def download_multimodal_packet(study_id):
             app.logger.warning("AZURE_BLOB environment variable not set. File downloads will be skipped.")
             flash("Cloud storage is not configured. Raw files will be skipped.", 'warning')
 
+        # =================================================================
+        # STEP 1: Build the wide-format biomarker CSV
+        # =================================================================
+
+        # Query all biomarker recordings for selected subjects in the date range
+        biomarker_query = db.session.query(
+            StudyRecording.recording_id,
+            StudyRecording.recording_datetime,
+            StudyRecording.subject_id,
+            Subject.external_subject_code,
+            StudyArm.arm_name,
+            BiomarkerType.sample_type,
+            BiomarkerType.biomarker_name,
+            StudyRecordingBiomarker.biomarker_value
+        ).join(
+            StudyRecordingBiomarker, StudyRecording.recording_id == StudyRecordingBiomarker.recording_id
+        ).join(
+            BiomarkerType, StudyRecordingBiomarker.biomarker_id == BiomarkerType.biomarker_id
+        ).join(
+            Subject, StudyRecording.subject_id == Subject.subject_id
+        ).outerjoin(
+            StudyArm, Subject.arm_id == StudyArm.arm_id
+        ).filter(
+            StudyRecording.study_id == study_id,
+            StudyRecording.subject_id.in_(subject_ids),
+            StudyRecording.recording_type == 'Biomarker',
+            StudyRecording.recording_datetime >= start_date,
+            StudyRecording.recording_datetime < end_date
+        ).order_by(
+            Subject.external_subject_code,
+            StudyRecording.recording_datetime
+        ).all()
+
+        # Build the wide-format DataFrame
+        wide_rows = {}  # keyed by (subject_id, recording_datetime)
+
+        for row in biomarker_query:
+            # Create a composite key: one row per subject per timepoint
+            key = (str(row.subject_id), row.recording_datetime)
+
+            if key not in wide_rows:
+                wide_rows[key] = {
+                    'Arm': row.arm_name or '',
+                    'Subject': row.external_subject_code or str(row.subject_id),
+                    'DateTime': row.recording_datetime.isoformat() if row.recording_datetime else '',
+                }
+
+            # Build the column name from sample_type and biomarker_name
+            # Convention: if sample_type is present → "{SampleType}_{BiomarkerName}"
+            #             if sample_type is NULL/empty → "{BiomarkerName}" alone
+            sample_type = (row.sample_type or '').strip()
+            biomarker_name = (row.biomarker_name or 'Unknown').strip()
+
+            if sample_type:
+                column_name = f"{sample_type.replace(' ', '_')}_{biomarker_name.replace(' ', '_')}"
+            else:
+                column_name = biomarker_name.replace(' ', '_')
+
+            wide_rows[key][column_name] = float(row.biomarker_value) if row.biomarker_value is not None else None
+
+        # =================================================================
+        # STEP 2: Query non-biomarker recordings for raw file downloads
+        # =================================================================
+
+        file_query = db.session.query(
+            StudyRecording.recording_id,
+            StudyRecording.recording_datetime,
+            StudyRecording.recording_type,
+            StudyRecording.subject_id,
+            Subject.external_subject_code,
+            StudyRecordingEEG.data_uri.label('eeg_uri'),
+            StudyRecordingWearable.data_uri.label('wearable_uri'),
+            StudyRecordingImage.data_uri.label('image_uri')
+        ).join(
+            Subject, StudyRecording.subject_id == Subject.subject_id
+        ).outerjoin(
+            StudyRecordingEEG, StudyRecording.recording_id == StudyRecordingEEG.recording_id
+        ).outerjoin(
+            StudyRecordingWearable, StudyRecording.recording_id == StudyRecordingWearable.recording_id
+        ).outerjoin(
+            StudyRecordingImage, StudyRecording.recording_id == StudyRecordingImage.recording_id
+        ).filter(
+            StudyRecording.study_id == study_id,
+            StudyRecording.subject_id.in_(subject_ids),
+            StudyRecording.recording_type.in_(['EEG', 'Wearable', 'Imaging']),
+            StudyRecording.recording_datetime >= start_date,
+            StudyRecording.recording_datetime < end_date
+        ).order_by(
+            Subject.external_subject_code,
+            StudyRecording.recording_datetime
+        ).all()
+
+        # =================================================================
+        # STEP 3: Assemble the ZIP
+        # =================================================================
+
         memory_file = BytesIO()
         zf = zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED)
-        subjects = Subject.query.filter(
-            Subject.study_id == study_id,
-            Subject.subject_id.in_(subject_ids)
-        ).all()
-        
-        for subject in subjects:
-            subject_folder = subject.external_subject_code
-            if not subject_folder:
-                subject_folder = f"Subject_ID_{subject.subject_id}"
-            
-            # --- UPDATED QUERY TO INCLUDE IMAGING ---
-            recordings_query = db.session.query(
-                StudyRecording.recording_datetime,
-                StudyRecording.recording_type,
-                StudyRecording.recording_id,
-                BiomarkerType.biomarker_name,
-                StudyRecordingBiomarker.biomarker_value,
-                StudyRecordingEEG.data_uri.label('eeg_uri'),
-                StudyRecordingWearable.data_uri.label('wearable_uri'),
-                StudyRecordingImage.data_uri.label('image_uri')  # <--- Added Image URI
-            ).select_from(StudyRecording)\
-             .filter(StudyRecording.study_id == study_id)\
-             .filter(StudyRecording.subject_id == subject.subject_id)\
-             .filter(StudyRecording.recording_datetime >= start_date)\
-             .filter(StudyRecording.recording_datetime < end_date)\
-             .outerjoin(StudyRecordingBiomarker, StudyRecording.recording_id == StudyRecordingBiomarker.recording_id)\
-             .outerjoin(BiomarkerType, StudyRecordingBiomarker.biomarker_id == BiomarkerType.biomarker_id)\
-             .outerjoin(StudyRecordingEEG, StudyRecording.recording_id == StudyRecordingEEG.recording_id)\
-             .outerjoin(StudyRecordingWearable, StudyRecording.recording_id == StudyRecordingWearable.recording_id)\
-             .outerjoin(StudyRecordingImage, StudyRecording.recording_id == StudyRecordingImage.recording_id) \
-             .order_by(StudyRecording.recording_datetime)\
-             .all() 
-            
-            if not recordings_query:
-                continue
 
-            for date_group, recordings_on_date in itertools.groupby(recordings_query, key=lambda r: r.recording_datetime.date()):
-                date_folder = date_group.strftime('%Y-%m-%d')
-                base_zip_path = f"{subject_folder}/{date_folder}"
-                
-                biomarker_data_for_csv = []
-                eeg_files_to_download = {} 
-                wearable_files_to_download = {}
-                image_files_to_download = {} # <--- New Dict for Images
+        # --- Write the wide-format biomarkers CSV ---
+        if wide_rows:
+            df_wide = pd.DataFrame(wide_rows.values())
 
-                for recording in recordings_on_date:
-                    recording_id_str = str(recording.recording_id)
-                    
-                    if recording.recording_type == 'Biomarker' and recording.biomarker_name:
-                        biomarker_data_for_csv.append({
-                            'recording_datetime': recording.recording_datetime.isoformat(),
-                            'biomarker_name': recording.biomarker_name,
-                            'biomarker_value': recording.biomarker_value,
-                            'recording_id': recording_id_str
-                        })
-                    
-                    elif recording.recording_type == 'EEG' and recording.eeg_uri:
-                        eeg_files_to_download[recording.eeg_uri] = recording_id_str
-                    
-                    elif recording.recording_type == 'Wearable' and recording.wearable_uri:
-                        wearable_files_to_download[recording.wearable_uri] = recording_id_str
-                    
-                    # --- NEW IMAGING LOGIC ---
-                    elif recording.recording_type == 'Imaging' and recording.image_uri:
-                        image_files_to_download[recording.image_uri] = recording_id_str
+            # Fixed columns come first in exact template order, then biomarker columns sorted
+            fixed_cols = ['Arm', 'Subject', 'DateTime']
+            biomarker_cols = sorted([c for c in df_wide.columns if c not in fixed_cols])
+            df_wide = df_wide[fixed_cols + biomarker_cols]
 
-                if biomarker_data_for_csv:
-                    df = pd.DataFrame(biomarker_data_for_csv)
-                    csv_data = df.to_csv(index=False, encoding='utf-8')
-                    zf.writestr(f"{base_zip_path}/biomarkers.csv", csv_data)
-                
-                # Download EEG
-                for uri, rec_id in eeg_files_to_download.items():
-                    zip_path = f"{base_zip_path}/eeg/{rec_id}.zip"
-                    _download_blob_to_zip(zf, uri, zip_path, blob_service_client)
-                
-                # Download Wearables
-                for uri, rec_id in wearable_files_to_download.items():
-                    zip_path = f"{base_zip_path}/wearable/{rec_id}.zip"
-                    _download_blob_to_zip(zf, uri, zip_path, blob_service_client)
+            zf.writestr('biomarkers.csv', df_wide.to_csv(index=False, encoding='utf-8'))
 
-                # --- DOWNLOAD IMAGES ---
-                for uri, rec_id in image_files_to_download.items():
-                    # Attempt to preserve the original extension (e.g. .dcm) from the blob URL
-                    try:
-                        path = urlparse(uri).path
-                        filename = os.path.basename(path)
-                        _, ext = os.path.splitext(filename)
-                        if not ext: 
-                            ext = ".dat" 
-                    except Exception:
+        # --- Download raw files organised by subject/date ---
+        for row in file_query:
+            subject_folder = row.external_subject_code or f"Subject_ID_{row.subject_id}"
+            date_folder = row.recording_datetime.date().strftime('%Y-%m-%d') if row.recording_datetime else 'unknown_date'
+            base_zip_path = f"{subject_folder}/{date_folder}"
+            recording_id_str = str(row.recording_id)
+
+            if row.recording_type == 'EEG' and row.eeg_uri:
+                zip_path = f"{base_zip_path}/eeg/{recording_id_str}.zip"
+                _download_blob_to_zip(zf, row.eeg_uri, zip_path, blob_service_client)
+
+            elif row.recording_type == 'Wearable' and row.wearable_uri:
+                zip_path = f"{base_zip_path}/wearable/{recording_id_str}.zip"
+                _download_blob_to_zip(zf, row.wearable_uri, zip_path, blob_service_client)
+
+            elif row.recording_type == 'Imaging' and row.image_uri:
+                try:
+                    path = urlparse(row.image_uri).path
+                    filename = os.path.basename(path)
+                    _, ext = os.path.splitext(filename)
+                    if not ext:
                         ext = ".dat"
-
-                    zip_path = f"{base_zip_path}/imaging/{rec_id}{ext}"
-                    _download_blob_to_zip(zf, uri, zip_path, blob_service_client)
+                except Exception:
+                    ext = ".dat"
+                zip_path = f"{base_zip_path}/imaging/{recording_id_str}{ext}"
+                _download_blob_to_zip(zf, row.image_uri, zip_path, blob_service_client)
 
         zf.close()
         memory_file.seek(0)
@@ -6271,7 +6765,7 @@ def download_multimodal_packet(study_id):
             as_attachment=True,
             download_name=f"{study.name.replace(' ', '_')}_Analysis_Packet_{filename_date}.zip"
         )
-    
+
     except Exception as e:
         app.logger.error(f"Failed to generate multimodal packet for study {study_id}: {e}", exc_info=True)
         flash(f'An error occurred while generating the packet: {e}', 'danger')
@@ -6582,7 +7076,6 @@ def research_query():
         return jsonify({'error': 'No query provided'}), 400
 
     try:
-        # --- Load AI key (check study settings first, then user account) ---
         api_key = None
         
         # First, try study settings
@@ -6603,7 +7096,6 @@ def research_query():
 
         client = openai.OpenAI(api_key=api_key)
 
-        # --- Improved extraction prompt ---
         extraction_prompt = f"""
         Extract search parameters for ClinicalTrials.gov from this user query:
         "{user_query}"
@@ -6627,7 +7119,6 @@ def research_query():
 
         params = json.loads(completion.choices[0].message.content)
 
-        # --- Condition normalization / expansion ---
         CONDITION_SYNONYMS = {
             "diabetes": [
                 "Diabetes Mellitus",
@@ -6643,11 +7134,9 @@ def research_query():
             key = raw_condition.lower()
             conditions = CONDITION_SYNONYMS.get(key, [raw_condition])
 
-        # --- Force historical data for duration analysis ---
         if params.get('metric') == 'duration' and not params.get('status'):
             params['status'] = 'COMPLETED'
 
-        # --- Fetch data ---
         ct_service = ClinicalTrialsService()
 
         df = ct_service.search_studies(
@@ -6663,7 +7152,6 @@ def research_query():
                 'plot': None
             })
 
-        # --- Outlier removal helper ---
         def remove_outliers(d, col):
             q1 = d[col].quantile(0.25)
             q3 = d[col].quantile(0.75)
@@ -6673,7 +7161,6 @@ def research_query():
         metric = params.get('metric', 'enrollment')
         plot_json = None
 
-        # --- Duration analysis ---
         if metric == 'duration':
             df_duration = df.dropna(subset=['duration_months'])
 
@@ -6714,7 +7201,6 @@ def research_query():
 
             plot_json = json.dumps(json_item(p, "researchPlotContainer"))
 
-        # --- Enrollment analysis (default) ---
         else:
             df_enroll = df.dropna(subset=['enrollment'])
 
@@ -6746,7 +7232,6 @@ def research_query():
 
             plot_json = json.dumps(json_item(p, "researchPlotContainer"))
 
-        # --- Generate natural-language summary ---
         summary_prompt = f"""
         User asked: "{user_query}"
 
