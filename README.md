@@ -25,6 +25,14 @@
 
 **STUDYPRO** is a modern, lightweight clinical trial management system (CTMS) designed specifically for academic institutions, hospitals, and investigator-initiated research. Unlike expensive enterprise solutions, STUDYPRO provides a transparent, accessible platform that seamlessly integrates subject management, digital biomarker recording, and AI-powered analytics into a single unified interface.
 
+
+> **Author:** Gideon Vos, James Cook University, Australia  
+> **Contact:** [LinkedIn](https://www.linkedin.com/in/gideonvos)  
+> **Released:** January 2026
+
+---
+
+
 **🌐 Try it now:** [https://studypro.novasyne.com](https://studypro.novasyne.com)
 
 ### Why STUDYPRO?
@@ -390,7 +398,7 @@ STUDYPRO is released as open-source software. Organizations can deploy, modify, 
 - **Company Website**: [https://www.novasyne.com](https://www.novasyne.com)
 - **Author**: Gideon Vos, James Cook University
 - **LinkedIn**: [https://www.linkedin.com/in/gideonvos](https://www.linkedin.com/in/gideonvos)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/studypro/issues)
+- **Issues**: [GitHub Issues](https://github.com/novasyne/studypro/issues)
 
 ---
 
