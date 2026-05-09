@@ -1,0 +1,48 @@
+STUDYPRO CTMS — Changelog
+=========================
+Release Date: 2026-05-09
+
+BUG FIXES
+---------
+
+1. Admin Rights Not Saving When Managing Study Participants
+   When editing a participant's details from the Manage Participants screen and
+   granting or revoking admin rights using the toggle switch, the change appeared
+   to succeed but was not saved. Re-opening the participant's edit window showed
+   the toggle reverting to its previous state. This has been fixed — admin rights
+   now save and persist correctly.
+
+2. Recording Action Buttons Misaligned in Study Recordings Table
+   In the Study Recordings table, the Visualize, Download, and Delete buttons were
+   not aligned consistently across rows. Recordings without a visualisation option
+   or a downloadable file caused the Delete button to shift left, making the table
+   hard to read and interact with. The buttons are now always displayed in fixed
+   columns — Visualize, Download, and Delete — with unavailable actions shown as
+   greyed-out (disabled) buttons so the layout stays consistent for every row.
+
+3. Duplicate Close Icons on Modal Dialogs
+   Multiple modal dialogs throughout the application (Recordings, Analytics,
+   Finances, Manage Subjects, Audit Log) displayed two overlapping close icons in
+   the top-right corner — a faint × from the Bootstrap close button and a bolder ×
+   from an additional icon underneath it. The duplicate icon has been removed from
+   all affected modals.
+
+4. Subject History Saving Crashes When Table Has No Rows
+   On the Subject History screen, clicking Save while a data entry table (Clinicians,
+   Diagnoses, Medications, or Contacts) was empty could cause a server error. The
+   table grid was sending a blank placeholder row as if it were real data, which
+   failed validation on required fields. Empty rows are now detected and skipped
+   before saving.
+
+5. Biomarker Type Dropdown Empty When Adding a Biomarker Recording
+   On the Add Recording screen, selecting "Biomarker" as the recording type showed
+   an empty dropdown with no biomarker types to choose from, preventing the recording
+   from being saved. The study settings were not being linked to the available
+   biomarker types on initial setup. This is now populated correctly.
+
+6. Biomarker Template Import Skipping All Rows Due to Invalid Subject ID
+   When importing a biomarker data template (Excel file), all data rows were skipped
+   with the error "invalid Subject ID". This happened because instructions written
+   into the data sheet were being read as data rows by the import process. The
+   instructions have been moved to a separate "Instructions" worksheet in the
+   template, leaving the data sheet clean for import.
