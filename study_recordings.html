@@ -1,0 +1,1322 @@
+{% extends "base.html" %}
+
+{% block title %}{{ study.name }} - Recordings{% endblock %}
+
+{% block head %}
+{{ super() }}
+
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" type="text/css"
+    href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
+<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css' rel='stylesheet'>
+<link href='https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css' rel='stylesheet'>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+
+<style>
+    #calendar {
+        max-width: 80%;
+        margin: 0 auto;
+        height: 60%;
+    }
+
+    #calendarModal .modal-dialog {
+        max-height: 90vh;
+        height: auto;
+    }
+
+    #calendarModal .modal-body {
+        padding: 0;
+        max-height: 60%;
+        overflow: hidden;
+    }
+
+    .dataTables_wrapper .dataTables_length select {
+        width: auto;
+        display: inline-block;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+        margin-left: 0.5em;
+        display: inline-block;
+        width: auto;
+    }
+
+    .dt-buttons {
+        margin-bottom: 0.5rem;
+    }
+
+    #dateRecordingsModal {
+        z-index: 1060;
+    }
+
+    #exportPacketModal {
+        z-index: 1060;
+    }
+
+    #confirmDeleteModal {
+        z-index: 1060;
+    }
+
+    #importTemplateModal {
+        z-index: 1060;
+    }
+
+    .modal-backdrop.show:nth-of-type(2) {
+        z-index: 1055;
+    }
+
+    #recordingsTable thead th,
+    #dateRecordingsTable thead th {
+        background-color: #20519c !important;
+        color: white !important;
+    }
+
+    #recordingsTable tbody tr:hover,
+    #dateRecordingsTable tbody tr:hover {
+        background-color: #f0f8ff;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background-color: #267445 !important;
+        border-color: #267445 !important;
+        color: white !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background-color: #20519c !important;
+        border-color: #20519c !important;
+        color: white !important;
+    }
+
+    .search-wrapper {
+        position: relative;
+    }
+
+    .search-results {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1061;
+        /* Higher than modal */
+        border: 1px solid #ccc;
+        background: white;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    .search-results .list-group-item {
+        cursor: pointer;
+    }
+
+    .search-results .list-group-item:hover {
+        background-color: #f0f0f0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<body data-page-name="study_recordings">
+    <br /><br />
+    <div class=" row justify-content-center">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">{{ study.name }}</h2>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-end mb-3">
+                        <button type="button" class="btn btn-success me-2" data-bs-toggle="modal"
+                            data-bs-target="#exportPacketModal">
+                            <i class="bi bi-inboxes me-1"></i>Package
+                        </button>
+                        <a href="{{ url_for('download_biomarker_template', study_id=study.study_id) }}"
+                            class="btn btn-success me-2">
+                            <i class="bi bi-file-earmark-spreadsheet me-1"></i>Export Template
+                        </a>
+                        <button type="button" class="btn btn-info me-2" data-bs-toggle="modal"
+                            data-bs-target="#importTemplateModal">
+                            <i class="bi bi-file-earmark-arrow-up me-1"></i>Import Template
+                        </button>
+                        <button type="button" class="btn btn-info" data-bs-toggle="modal"
+                            data-bs-target="#calendarModal">
+                            <i class="bi bi-calendar3 me-1"></i> Calendar View
+                        </button>
+                        <button type="button" class="btn btn-primary ms-2" data-bs-toggle="modal"
+                            data-bs-target="#newRecordingModal">
+                            <i class="bi bi-plus-square button-icon me-1"></i>New Recording
+                        </button>
+                    </div>
+                    <hr />
+
+                    <div class="mb-3" id="recording-type-filter">
+                        <div class="btn-group btn-group-sm ms-" role="group" aria-label="Recording Type Filter">
+                            <button type="button" class="btn btn-info active" data-type-filter="">All</button>
+                            {% if study_settings.biological_enabled %}
+                            <button type="button" class="btn btn-info" data-type-filter="Biomarker">Biomarkers</button>
+                            {% endif %}
+                            {% if study_settings.scales_enabled %}
+                            <button type="button" class="btn btn-info" data-type-filter="Scale">Scales</button>
+                            {% endif %}
+                            {% if study_settings.eeg_enabled %}
+                            <button type="button" class="btn btn-info" data-type-filter="EEG">EEG</button>
+                            {% endif %}
+                            {% if study_settings.wearables_enabled %}
+                            <button type="button" class="btn btn-info" data-type-filter="Wearable">Wearables</button>
+                            {% endif %}
+                            <button type="button" class="btn btn-info" data-type-filter="Imaging">Imaging</button>
+                            <button type="button" class="btn btn-info" data-type-filter="Symptom">Symptoms</button>
+                            <button type="button" class="btn btn-info" data-type-filter="Adverse Event">Adverse
+                                Events</button>
+                            <button type="button" class="btn btn-info" data-type-filter="Medication">Medication</button>
+                        </div>
+                    </div>
+                    <div id="table-loader-container" class="text-center p-5">
+                        <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">Loading recordings...</span>
+                        </div>
+                        <h5 class="mt-3">Loading recordings...</h5>
+                    </div>
+
+                    <div class="table-responsive" id="table-container" style="visibility: hidden;">
+                        <table id="recordingsTable" class="table table-hover align-middle display responsive nowrap"
+                            style="width:100%">
+                            <thead class="bg-light">
+                                <tr style="cursor:pointer">
+                                    <th><span aria-hidden="true">&#8597;</span> Subject</th>
+                                    <th><span aria-hidden="true">&#8597;</span> Recording Type</th>
+                                    <th><span aria-hidden="true">&#8597;</span> Date & Time</th>
+                                    <th><span aria-hidden="true">&#8597;</span> Details</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rec in recordings %}
+                                <tr>
+                                    <td>{{ rec.subject_code }} - {{ rec.first_name }} {{ rec.last_name }}</td>
+                                    <td>{{ rec.recording_type }}</td>
+                                    <td data-order="{{ rec.recording_datetime }}">{{
+                                        rec.recording_datetime.split('T')[0] }} {{
+                                        rec.recording_datetime.split('T')[1].split('.')[0] }}</td>
+                                    <td>
+                                        {% if rec.recording_type == 'Biomarker' or rec.recording_type == 'Scale' %}
+                                        <strong>{{ rec.biomarker_name }}:</strong> {{ rec.biomarker_value }}
+                                        {% elif rec.recording_type == 'Symptom' %}
+                                        <strong>{{ rec.symptom_term }}:</strong> {{ rec.symptom_severity }}
+                                        {% elif rec.recording_type == 'Adverse Event' %}
+                                        <strong class="text-danger">{{ rec.ae_term }}</strong> (Grade: {{ rec.ae_grade
+                                        }})
+                                        {% elif rec.recording_type == 'Medication' %}
+                                        <strong>{{ rec.med_name }}</strong> ({{ rec.med_dose }})
+                                        {% elif rec.recording_type == 'Imaging' %}
+                                        <strong>{{ rec.image_type }}</strong>
+                                        {% elif rec.recording_type == 'EEG' or rec.recording_type == 'Wearable' %}
+                                        File Recording
+                                        {% else %}
+                                        N/A
+                                        {% endif %}
+                                    </td>
+                                    <td style="text-align: center; white-space: nowrap;">
+                                        <div class="d-flex justify-content-center gap-1">
+                                            {% if rec.recording_type == 'EEG' %}
+                                            <a href="{{ url_for('visualize_eeg', recording_id=rec.recording_id) }}"
+                                                class="btn btn-sm btn-info visualize-eeg-btn"
+                                                data-recording-id="{{ rec.recording_id }}"
+                                                title="Visualize EEG Data">
+                                                <i class="bi bi-bar-chart-line button-icon me-1"></i>Visualize
+                                            </a>
+                                            {% elif rec.recording_type == 'Imaging' %}
+                                            <a href="{{ url_for('visualize_image', recording_id=rec.recording_id) }}"
+                                                class="btn btn-sm btn-info visualize-image-btn"
+                                                data-recording-id="{{ rec.recording_id }}"
+                                                title="View Image Preview">
+                                                <i class="bi bi-eye button-icon me-1"></i>Visualize
+                                            </a>
+                                            {% else %}
+                                            <button type="button" class="btn btn-sm btn-secondary" disabled
+                                                title="No visualization available">
+                                                <i class="bi bi-bar-chart-line button-icon me-1"></i>Visualize
+                                            </button>
+                                            {% endif %}
+                                            {% if rec.has_file %}
+                                            <a href="{{ url_for('download_recording', recording_id=rec.recording_id) }}"
+                                                class="btn btn-sm btn-info"
+                                                title="Download File">
+                                                <i class="bi bi-cloud-download button-icon me-1"></i>Download
+                                            </a>
+                                            {% else %}
+                                            <button type="button" class="btn btn-sm btn-secondary" disabled
+                                                title="No file to download">
+                                                <i class="bi bi-cloud-download button-icon me-1"></i>Download
+                                            </button>
+                                            {% endif %}
+                                            <button type="button" class="btn btn-sm btn-danger"
+                                                data-bs-toggle="modal" data-bs-target="#confirmDeleteModal"
+                                                data-bs-delete-url="{{ url_for('delete_recording', recording_id=rec.recording_id) }}"
+                                                title="Delete Recording">
+                                                <i class="bi bi-trash button-icon me-1"></i>Delete
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <hr class="mt-4">
+
+                    <div class="d-flex justify-content-end">
+                        <a href="{{ url_for('edit_study', study_id=study.study_id) }}" class="btn btn-secondary"><i
+                                class="bi bi-x-circle button-icon me-1"></i>Close</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="modal fade" id="newRecordingModal" tabindex="-1" aria-labelledby="newRecordingModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <form id="newRecordingForm" method="POST"
+                    action="{{ url_for('add_recording', study_id=study.study_id) }}" enctype="multipart/form-data">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="newRecordingModalLabel">Add New Recording</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="subject_id" class="form-label">Subject <span
+                                        class="text-danger">*</span></label>
+                                <select class="form-select" id="subject_id" name="subject_id" required>
+                                    <option value="" disabled selected>-- Select a Subject --</option>
+                                    {% for s in subjects %}
+                                    <option value="{{ s.subject_id }}">{{ s.external_subject_code }} - {{ s.first_name
+                                        }}
+                                        {{ s.last_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="recording_datetime" class="form-label">Recording Date & Time <span
+                                        class="text-danger">*</span></label>
+                                <input type="datetime-local" class="form-control" id="recording_datetime"
+                                    name="recording_datetime" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="recording_type" class="form-label">Recording Type <span
+                                    class="text-danger">*</span></label>
+                            <select class="form-select" id="recording_type" name="recording_type" required>
+                                <option value="" disabled selected>-- Select a Type --</option>
+                                {% if study_settings.biological_enabled %}
+                                <option value="Biomarker">Biomarker</option>
+                                {% endif %}
+                                {% if study_settings.scales_enabled %}
+                                <option value="Scale">Scale / PRO</option>
+                                {% endif %}
+                                <option value="Symptom">Symptom</option>
+                                <option value="Medication">Medication</option>
+                                <option value="Adverse Event">Adverse Event</option>
+                                <option value="Imaging">Imaging</option>
+                                {% if study_settings.eeg_enabled %}
+                                <option value="EEG">EEG</option>
+                                {% endif %}
+                                {% if study_settings.wearables_enabled %}
+                                <option value="Wearable">Wearable</option>
+                                {% endif %}
+                            </select>
+                        </div>
+                        <hr>
+
+                        <div id="dynamic-fields-container">
+                            <div id="biomarker-fields" class="dynamic-section" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="biomarker_id" class="form-label">Biomarker Type <span
+                                                class="text-danger">*</span></label>
+                                        <select class="form-select" id="biomarker_id" name="biomarker_id">
+                                            <option value="">-- Select --</option>
+                                            {% for b in biological_biomarker_types %}
+                                            <option value="{{ b.biomarker_id }}">{{ b.biomarker_name }} ({{
+                                                b.sample_type }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="biomarker_value" class="form-label">Biomarker Value <span
+                                                class="text-danger">*</span></label>
+                                        <input type="number" step="any" class="form-control" id="biomarker_value"
+                                            name="biomarker_value">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="scale-fields" class="dynamic-section" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="scale_id" class="form-label">Scale / PRO Name <span
+                                                class="text-danger">*</span></label>
+                                        <select class="form-select" id="scale_id" name="biomarker_id">
+                                            <option value="">-- Select --</option>
+                                            {% for s in scale_biomarker_types %}
+                                            <option value="{{ s.biomarker_id }}">{{ s.biomarker_name }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="scale_value" class="form-label">Total Score <span
+                                                class="text-danger">*</span></label>
+                                        <input type="number" step="any" class="form-control" id="scale_value"
+                                            name="biomarker_value">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="symptom-fields" class="dynamic-section" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="symptom_verbatim" class="form-label">Symptom (Verbatim)</label>
+                                    <textarea class="form-control" id="symptom_verbatim" name="symptom_verbatim"
+                                        rows="2" placeholder="Enter the patient's exact words..."></textarea>
+                                </div>
+                                <div class="mb-3 search-wrapper">
+                                    <label for="symptom-meddra-search" class="form-label">Symptom (MedDRA Term) <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control meddra-search" id="symptom-meddra-search"
+                                        name="symptom_meddra_term_search" placeholder="Type to search MedDRA..."
+                                        autocomplete="off">
+                                    <input type="hidden" id="symptom_meddra_code" name="symptom_meddra_code">
+                                    <input type="hidden" id="symptom_meddra_term" name="symptom_meddra_term">
+                                    <div class="search-results list-group" id="symptom-search-results"></div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="symptom_severity" class="form-label">Severity <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select" id="symptom_severity" name="symptom_severity">
+                                        <option value="" selected>-- Select --</option>
+                                        <option value="Mild">Mild</option>
+                                        <option value="Moderate">Moderate</option>
+                                        <option value="Severe">Severe</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="medication-fields" class="dynamic-section" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="medication_name" class="form-label">Medication Name <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="medication_name" name="medication_name"
+                                        placeholder="e.g., Paracetamol">
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="medication_dose" class="form-label">Dose</label>
+                                        <input type="text" class="form-control" id="medication_dose"
+                                            name="medication_dose" placeholder="e.g., 500 mg">
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="medication_route" class="form-label">Route</label>
+                                        <input type="text" class="form-control" id="medication_route"
+                                            name="medication_route" placeholder="e.g., Oral">
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="medication_indication" class="form-label">Indication</label>
+                                    <textarea class="form-control" id="medication_indication"
+                                        name="medication_indication" rows="2"
+                                        placeholder="Reason for taking..."></textarea>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="true" id="is_concomitant"
+                                        name="is_concomitant" checked>
+                                    <label class="form-check-label" for="is_concomitant">
+                                        Is Concomitant Medication
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="adverse-event-fields" class="dynamic-section" style="display: none;">
+                                <div class="mb-3">
+                                    <label for="ae_verbatim" class="form-label">Adverse Event (Verbatim)</label>
+                                    <textarea class="form-control" id="ae_verbatim" name="ae_verbatim" rows="2"
+                                        placeholder="Enter clinical description of event..."></textarea>
+                                </div>
+                                <div class="mb-3 search-wrapper">
+                                    <label for="ae-meddra-search" class="form-label">Adverse Event (MedDRA Term) <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control meddra-search" id="ae-meddra-search"
+                                        name="ae_meddra_term_search" placeholder="Type to search MedDRA..."
+                                        autocomplete="off">
+                                    <input type="hidden" id="ae_meddra_code" name="ae_meddra_code">
+                                    <input type="hidden" id="ae_meddra_term" name="ae_meddra_term">
+                                    <div class="search-results list-group" id="ae-search-results"></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="severity_grade" class="form-label">Severity Grade <span
+                                                class="text-danger">*</span></label>
+                                        <select class="form-select" id="severity_grade" name="severity_grade">
+                                            <option value="" selected>-- Select CTCAE Grade --</option>
+                                            <option value="Grade 1">Grade 1 (Mild)</option>
+                                            <option value="Grade 2">Grade 2 (Moderate)</option>
+                                            <option value="Grade 3">Grade 3 (Severe)</option>
+                                            <option value="Grade 4">Grade 4 (Life-threatening)</option>
+                                            <option value="Grade 5">Grade 5 (Death)</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="causality" class="form-label">Causality (Relationship to
+                                            Drug)</label>
+                                        <select class="form-select" id="causality" name="causality">
+                                            <option value="" selected>-- Select --</option>
+                                            <option value="Not Related">Not Related</option>
+                                            <option value="Unlikely">Unlikely</option>
+                                            <option value="Possible">Possible</option>
+                                            <option value="Probable">Probable</option>
+                                            <option value="Definite">Definite</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="outcome" class="form-label">Outcome</label>
+                                        <select class="form-select" id="outcome" name="outcome">
+                                            <option value="" selected>-- Select --</option>
+                                            <option value="Resolved">Resolved</option>
+                                            <option value="Resolving">Resolving</option>
+                                            <option value="Ongoing">Ongoing</option>
+                                            <option value="Resolved with Sequelae">Resolved with Sequelae</option>
+                                            <option value="Fatal">Fatal</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3 d-flex align-items-center">
+                                        <div class="form-check form-switch pt-3">
+                                            <input class="form-check-input" type="checkbox" role="switch"
+                                                id="is_serious_ae" name="is_serious_ae" value="true">
+                                            <label class="form-check-label" for="is_serious_ae">Is this a
+                                                Serious AE (SAE)?</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="imaging-fields" class="dynamic-section" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="image_type" class="form-label">Image Type <span class="text-danger">*</span></label>
+                                        <select class="form-select" id="image_type" name="image_type">
+                                            <option value="" selected>-- Select Type --</option>
+                                            <option value="MRI">MRI</option>
+                                            <option value="CT">CT Scan</option>
+                                            <option value="X-Ray">X-Ray</option>
+                                            <option value="Ultrasound">Ultrasound</option>
+                                            <option value="PET">PET Scan</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label for="imaging_file_input" class="form-label">Upload Image <span class="text-danger">*</span></label>
+                                        <input type="file" class="form-control" id="imaging_file_input" 
+                                               accept=".dcm,.nii,.nii.gz,.png,.jpg,.jpeg">
+                                        <div class="form-text">Supported: DICOM (.dcm), NIfTI (.nii, .gz), PNG, JPG</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="file_fields_container" class="dynamic-section" style="display: none;">
+                                <div id="eeg_device_field" class="mb-3" style="display: none;">
+                                    <label for="eeg_id" class="form-label">EEG Device <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select" name="eeg_id">
+                                        <option value="">Select EEG Device</option>
+                                        {% for device in eeg_devices %}
+                                        <option value="{{ device.eeg_id }}">{{ device.manufacturer }}: {{
+                                            device.device_type
+                                            }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div id="wearable_device_field" class="mb-3" style="display: none;">
+                                    <label for="wearable_id" class="form-label">Wearable Device <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select" name="wearable_id">
+                                        <option value="">Select Wearable Device</option>
+                                        {% for device in wearable_devices %}
+                                        <option value="{{ device.wearable_id }}">{{ device.manufacturer }}: {{
+                                            device.device_name }} ({{ device.wearable_type }} - {{
+                                            device.wearable_location
+                                            }})
+                                            </Gption>
+                                            {% endfor %}
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="recording_files_input" class="form-label">Upload Files <span
+                                            class="text-danger">*</span></label>
+                                    <input type="file" class="form-control" id="recording_files_input" multiple>
+                                    <div class="form-text">Select one or more files. They will be automatically
+                                        compressed into a single ZIP file for upload.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"
+                                style="display: none;"></span>
+                            <i class="bi bi-file-earmark-arrow-up button-icon me-1"></i>Add Recording
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                                class="bi bi-x-circle button-icon me-1"></i>Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="importTemplateModal" tabindex="-1" aria-labelledby="importTemplateModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="importTemplateForm" method="POST"
+                    action="{{ url_for('import_biomarker_template', study_id=study.study_id) }}"
+                    enctype="multipart/form-data">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="importTemplateModalLabel">Import Biomarker Data</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Upload the completed Excel biomarker template. Existing records will be updated, and new
+                            records will be added.</p>
+                        <div class="mb-3">
+                            <label for="template_file" class="form-label">Template File <span
+                                    class="text-danger">*</span></label>
+                            <input class="form-control" type="file" id="template_file" name="template_file"
+                                accept=".xlsx, .xls" required>
+                            <div class="form-text">Please ensure the file matches the downloaded template format.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+
+                        <button type="submit" class="btn btn-primary" id="importSubmitButton">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"
+                                style="display: none;"></span>
+                            <span class="button-text"><i
+                                    class="bi bi-file-earmark-arrow-up button-icon me-1"></i>Import</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                                class="bi bi-x-circle button-icon me-1"></i>Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="calendarModal" tabindex="-1" aria-labelledby="calendarModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" style="max-height: 60%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="calendarModalLabel">Recordings Calendar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id='calendar'></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="dateRecordingsModal" tabindex="-1" aria-labelledby="dateRecordingsModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-xl" style="max-height: 60%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="dateRecordingsModalLabel">Recordings for Selected Date</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table id="dateRecordingsTable" class="table table-hover align-middle display responsive nowrap"
+                            style="width:100%">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Recording Type</th>
+                                    <th>Time</th>
+                                    <th>Details</th>
+                                    <th class="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dateRecordingsBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="exportPacketModal" tabindex="-1" aria-labelledby="exportPacketModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form id="exportPacketForm" method="POST"
+                    action="{{ url_for('download_multimodal_packet', study_id=study.study_id) }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exportPacketModalLabel">Export Multi-modal Analysis Packet</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Select subjects and date range to package &amp; export recordings, organized by subject and
+                            date.</p>
+
+                        <div class="mb-3">
+                            <label for="multimodalSubjectSelect" class="form-label">Subjects <span
+                                    class="text-danger">*</span></label>
+                            <select name="subject_ids" id="multimodalSubjectSelect" class="form-control" multiple
+                                required size="8">
+                                {% for s in subjects %}
+                                <option value="{{ s.subject_id }}">{{ s.external_subject_code }} {% if s.first_name
+                                    %}({{ s.first_name }} {{ s.last_name }}){% endif %}</option>
+                                {% else %}
+                                <option disabled>No subjects enrolled in this study.</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="multimodalStartDate" class="form-label">Start Date</label>
+                                <input type="date" name="start_date" id="multimodalStartDate" class="form-control">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="multimodalEndDate" class="form-label">End Date</label>
+                                <input type="date" name="end_date" id="multimodalEndDate" class="form-control">
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" id="runMultimodalPacket" class="btn btn-primary">
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"
+                                style="display: none;"></span>
+                            <i class="fas fa-download me-1"></i>
+                            <span class="button-text"><i class="bi bi-cloud-download button-icon me-1"></i>Download
+                                Analysis Packet</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                                class="bi bi-x-circle button-icon me-1"></i>Close</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-labelledby="confirmDeleteModalLabel"
+        aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to permanently delete this recording? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <form id="deleteRecordForm" method="POST" action="">
+                        <button type="submit" class="btn btn-danger"><i class="bi bi-trash button-icon me-1"></i>Yes,
+                            Delete</button>
+                    </form>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Cancel</button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+    <script type="text/javascript"
+        src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+    <script type="text/javascript"
+        src="https://cdn.datatables.net/responsive/2.5.0/js/responsive.bootstrap5.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+    <script type="text/javascript" src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <script>
+        var recordingsData = {{ recordings | tojson | safe }};
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl)
+            })
+
+            var mainTable = $('#recordingsTable').DataTable({
+                responsive: true,
+                pageLength: 5,
+                searching: true,
+                lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+                order: [[2, 'desc']],
+                dom: 'Bfrtip',
+                buttons: [
+                    {
+                        extend: 'csv',
+                        className: 'btn btn-sm btn-secondary ms-2',
+                        exportOptions: {
+                            columns: [0, 1, 2, 3]
+                        }
+                    },
+                    {
+                        extend: 'excel',
+                        className: 'btn btn-sm btn-secondary ms-2',
+                        exportOptions: {
+                            columns: [0, 1, 2, 3]
+                        }
+                    }
+                ],
+                columnDefs: [
+                    { orderable: false, targets: 4 },
+                    { className: 'text-center', targets: 4 }
+                ],
+                language: {
+                    search: "Search all fields:",
+                    lengthMenu: "Show _MENU_ recordings per page",
+                    info: "Showing _START_ to _END_ of _TOTAL_ recordings",
+                    infoEmpty: "No recordings available",
+                    infoFiltered: "(filtered from _MAX_ total recordings)",
+                    paginate: {
+                        first: "First",
+                        last: "Last",
+                        next: "Next",
+                        previous: "Previous"
+                    },
+                    emptyTable: "No recordings yet."
+                },
+                initComplete: function () {
+                    $('.dt-buttons').addClass('mb-3');
+                    $('.dt-button').removeClass('dt-button').addClass('btn btn-sm btn-secondary me-1');
+
+                    $('#table-loader-container').hide();
+                    $('#table-container').css('visibility', 'visible');
+                }
+            });
+
+            $('#recording-type-filter .btn').on('click', function () {
+                var filterValue = $(this).data('type-filter');
+                mainTable.column(1).search(filterValue ? '^' + filterValue + '$' : '', true, false).draw();
+                $('#recording-type-filter .btn').removeClass('active');
+                $(this).addClass('active');
+            });
+
+            var dateMap = {};
+            var dateTable = null;
+
+            recordingsData.forEach(function (rec) {
+                var fullDateTime = rec.recording_datetime;
+                var date = fullDateTime.split('T')[0]; // YYYY-MM-DD
+                var time = fullDateTime.split('T')[1].split('.')[0]; // HH:MM:SS
+                rec.time = time || '';
+                if (!dateMap[date]) {
+                    dateMap[date] = [];
+                }
+                dateMap[date].push(rec);
+            });
+
+            var calendarEvents = recordingsData.map(function (rec) {
+                let color = '#0d6efd'; // Default (Blue)
+                let title = rec.subject_code + ': ' + rec.recording_type;
+
+                if (rec.recording_type === 'Biomarker' || rec.recording_type === 'Scale') {
+                    title = rec.subject_code + ': ' + (rec.biomarker_name || rec.recording_type);
+                    color = (rec.recording_type === 'Scale') ? '#663399' : '#0d6efd';
+                } else if (rec.recording_type === 'Symptom') {
+                    title = rec.subject_code + ': ' + (rec.symptom_term || 'Symptom');
+                    color = '#000000'; // Black
+                } else if (rec.recording_type === 'Adverse Event') {
+                    title = rec.subject_code + ': ' + (rec.ae_term || 'Adverse Event');
+                    color = '#dc3545'; // Red
+                } else if (rec.recording_type === 'Medication') {
+                    title = rec.subject_code + ': ' + (rec.med_name || 'Medication');
+                    color = '#ffc107'; // Yellow
+                } else if (rec.recording_type === 'EEG') {
+                    title = rec.subject_code + ': EEG File';
+                    color = '#0dcaf0'; // Cyan
+                } else if (rec.recording_type === 'Wearable') {
+                    title = rec.subject_code + ': Wearable File';
+                    color = '#6f42c1'; // Purple
+                } else if (rec.recording_type === 'Imaging') {
+                    title = rec.subject_code + ': ' + (rec.image_type || 'Imaging');
+                    color = '#fd7e14'; // Orange
+                }
+
+                return {
+                    id: rec.recording_id,
+                    title: title,
+                    start: rec.recording_datetime,
+                    backgroundColor: color,
+                    borderColor: color,
+                    extendedProps: {
+                        has_file: rec.has_file
+                    }
+                };
+            });
+
+            var calendarEl = document.getElementById('calendar');
+            var calendar;
+            var modal = document.getElementById('calendarModal');
+            var dateRecordingsModalEl = document.getElementById('dateRecordingsModal');
+
+            function handleModalCloseCleanup() {
+                const anyModalOpen = document.querySelector('.modal.show');
+                if (anyModalOpen) {
+                    document.body.classList.add('modal-open');
+                } else {
+                    const backdrops = document.querySelectorAll('.modal-backdrop');
+                    backdrops.forEach(backdrop => backdrop.remove());
+                    document.body.classList.remove('modal-open');
+                    document.body.style.paddingRight = '';
+                    document.body.style.overflow = '';
+                }
+            }
+
+            [modal, dateRecordingsModalEl, document.getElementById('newRecordingModal'), document.getElementById('exportPacketModal'), document.getElementById('confirmDeleteModal'), document.getElementById('importTemplateModal')].forEach(el => {
+                if (el) {
+                    el.addEventListener('hidden.bs.modal', handleModalCloseCleanup);
+                }
+            });
+
+
+            function showDateRecordings(selectedDate) {
+                var records = dateMap[selectedDate] || [];
+
+                if (dateTable) {
+                    dateTable.destroy();
+                }
+
+                var tbody = document.getElementById('dateRecordingsBody');
+                tbody.innerHTML = '';
+
+                records.forEach(function (rec) {
+                    var row = document.createElement('tr');
+
+                    var valueDisplay = 'N/A';
+
+                    if (rec.recording_type == 'Biomarker' || rec.recording_type == 'Scale') {
+                        const name = rec.biomarker_name || 'None';
+                        const value = rec.biomarker_value || 'None';
+                        valueDisplay = `<strong>${name}:</strong> ${value}`;
+                    } else if (rec.recording_type == 'Symptom') {
+                        const term = rec.symptom_term || 'None';
+                        const severity = rec.symptom_severity || 'None';
+                        valueDisplay = `<strong>${term}:</strong> ${severity}`;
+                    } else if (rec.recording_type == 'Adverse Event') {
+                        const term = rec.ae_term || 'None';
+                        const grade = rec.ae_grade || 'None';
+                        valueDisplay = `<strong class="text-danger">${term}</strong> (Grade: ${grade})`;
+                    } else if (rec.recording_type == 'Medication') {
+                        const name = rec.med_name || 'None';
+                        const dose = rec.med_dose || 'None';
+                        valueDisplay = `<strong>${name}</strong> (${dose})`;
+                    } else if (rec.recording_type == 'Imaging') {
+                        const type = rec.image_type || 'Unknown';
+                        valueDisplay = `<strong>${type}</strong>`;
+                    } else if (rec.recording_type == 'EEG' || rec.recording_type == 'Wearable') {
+                        valueDisplay = 'File Recording';
+                    }
+
+                    let actionsHtml = '<div class="d-flex justify-content-center gap-1">';
+                    if (rec.recording_type == 'EEG') {
+                        actionsHtml += `<a href="/visualize_eeg/${rec.recording_id}" class="btn btn-sm btn-info visualize-eeg-btn" data-recording-id="${rec.recording_id}" title="Visualize EEG Data"><i class="bi bi-bar-chart-line button-icon me-1"></i>Visualize</a>`;
+                    } else if (rec.recording_type == 'Imaging') {
+                        actionsHtml += `<a href="/visualize_image/${rec.recording_id}" class="btn btn-sm btn-info" title="View Image"><i class="bi bi-eye button-icon me-1"></i>Visualize</a>`;
+                    } else {
+                        actionsHtml += `<button type="button" class="btn btn-sm btn-secondary" disabled title="No visualization available"><i class="bi bi-bar-chart-line button-icon me-1"></i>Visualize</button>`;
+                    }
+                    if (rec.has_file) {
+                        actionsHtml += `<a href="/recording/${rec.recording_id}/download" class="btn btn-sm btn-info" title="Download File"><i class="bi bi-cloud-download button-icon me-1"></i>Download</a>`;
+                    } else {
+                        actionsHtml += `<button type="button" class="btn btn-sm btn-secondary" disabled title="No file to download"><i class="bi bi-cloud-download button-icon me-1"></i>Download</button>`;
+                    }
+                    actionsHtml += `<button type="button" class="btn btn-sm btn-danger"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#confirmDeleteModal"
+                                        data-bs-delete-url="/recording/${rec.recording_id}/delete"
+                                        title="Delete Recording">
+                                        <i class="bi bi-trash button-icon me-1"></i>Delete
+                                    </button>`;
+                    actionsHtml += '</div>';
+
+                    row.innerHTML = `
+                        <td>${rec.subject_code} - ${rec.first_name} ${rec.last_name}</td>
+                        <td>${rec.recording_type}</td>
+                        <td>${rec.time}</td>
+                        <td>${valueDisplay}</td>
+                        <td class="text-center">
+                            ${actionsHtml}
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                var modalTooltipTriggerList = [].slice.call(tbody.querySelectorAll('[data-bs-toggle="tooltip"]'))
+                var modalTooltipList = modalTooltipTriggerList.map(function (tooltipTriggerEl) {
+                    return new bootstrap.Tooltip(tooltipTriggerEl)
+                });
+
+                dateTable = $('#dateRecordingsTable').DataTable({
+                    responsive: true,
+                    pageLength: 5,
+                    info: false,
+                    lengthChange: false,
+                    order: [[2, 'asc']],
+                    dom: 'Bfrtip',
+                    buttons: [
+                        { extend: 'csv', className: 'btn btn-sm btn-secondary', filename: 'recordings_' + selectedDate, exportOptions: { columns: [0, 1, 2, 3] } },
+                        { extend: 'excel', className: 'btn btn-sm btn-secondary', filename: 'recordings_' + selectedDate, exportOptions: { columns: [0, 1, 2, 3] } }
+                    ],
+                    columnDefs: [{ orderable: false, targets: 4 }, { className: 'text-center', targets: 4 }],
+                    language: { search: "Filter:", info: "Showing _START_ to _END_ of _TOTAL_ recordings", infoEmpty: "No recordings for this date", emptyTable: "No recordings for this date" },
+                    initComplete: function () { $('.dt-button').removeClass('dt-button').addClass('btn btn-sm btn-secondary me-1'); }
+                });
+
+                document.getElementById('dateRecordingsModalLabel').textContent = `Recordings for ${selectedDate}`;
+                var dateModal = new bootstrap.Modal(document.getElementById('dateRecordingsModal'));
+                dateModal.show();
+            }
+
+            modal.addEventListener('shown.bs.modal', function () {
+                if (!calendar) {
+                    calendar = new FullCalendar.Calendar(calendarEl, {
+                        themeSystem: 'bootstrap5',
+                        height: '80vh',
+                        initialView: 'listWeek',
+                        dayHeaderContent: function (arg) { return { html: '<span style="color: black;">' + arg.text + '</span>' }; },
+                        dayCellContent: function (arg) { return { html: '<span style="color: black;">' + arg.dayNumberText + '</span>' }; },
+                        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listWeek' },
+                        events: calendarEvents, // Use the new events array
+                        editable: false,
+                        eventDidMount: function (info) {
+                            info.el.style.cursor = 'pointer';
+                        },
+                        eventClick: function (info) {
+                            showDateRecordings(info.event.startStr.split('T')[0]);
+                        },
+                        dateClick: function (info) {
+                            showDateRecordings(info.dateStr);
+                        }
+                    });
+                    calendar.render();
+                } else {
+                    calendar.render();
+                }
+            });
+
+            try {
+                const now = new Date();
+                const localDate = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+                const localISOString = localDate.toISOString().substring(0, 16);
+                document.getElementById('recording_datetime').value = localISOString;
+            } catch (e) { console.error("Error setting default datetime:", e); }
+
+            const newRecordingForm = document.getElementById('newRecordingForm');
+            const recordingTypeSelect = document.getElementById('recording_type');
+            const filesInput = document.getElementById('recording_files_input');
+            const imagingFilesInput = document.getElementById('imaging_file_input'); // New
+
+            recordingTypeSelect.addEventListener('change', function () {
+                var type = $(this).val();
+                $('.dynamic-section').hide();
+                $('.dynamic-section').find('input, select, textarea').prop('required', false).prop('disabled', true);
+
+                var $section;
+                var $requiredFields = $();
+
+                switch (type) {
+                    case 'Biomarker':
+                        $section = $('#biomarker-fields');
+                        $requiredFields = $section.find('#biomarker_id, #biomarker_value');
+                        break;
+                    case 'Scale':
+                        $section = $('#scale-fields');
+                        $requiredFields = $section.find('#scale_id, #scale_value');
+                        break;
+                    case 'Symptom':
+                        $section = $('#symptom-fields');
+                        $section.find('input, select, textarea').prop('disabled', false);
+                        $requiredFields = $section.find('#symptom-meddra-search, #symptom_severity, #symptom_meddra_code');
+                        break;
+                    case 'Medication':
+                        $section = $('#medication-fields');
+                        $section.find('input, select, textarea').prop('disabled', false);
+                        $requiredFields = $section.find('#medication_name');
+                        break;
+                    case 'Adverse Event':
+                        $section = $('#adverse-event-fields');
+                        $section.find('input, select, textarea').prop('disabled', false);
+                        $requiredFields = $section.find('#ae-meddra-search, #severity_grade, #ae_meddra_code');
+                        break;
+                    case 'EEG':
+                        $section = $('#file_fields_container, #eeg_device_field');
+                        $('#file_fields_container').find('input, select, textarea').prop('disabled', false);
+                        $('#eeg_device_field').find('input, select, textarea').prop('disabled', false);
+                        $requiredFields = $section.find('select[name="eeg_id"], #recording_files_input');
+                        break;
+                    case 'Wearable':
+                        $section = $('#file_fields_container, #wearable_device_field');
+                        $('#file_fields_container').find('input, select, textarea').prop('disabled', false);
+                        $('#wearable_device_field').find('input, select, textarea').prop('disabled', false);
+                        $requiredFields = $section.find('select[name="wearable_id"], #recording_files_input');
+                        break;
+                    case 'Imaging':
+                        $section = $('#imaging-fields');
+                        $section.find('input, select, textarea').prop('disabled', false);
+                        $requiredFields = $section.find('#image_type, #imaging_file_input');
+                        break;
+                }
+
+                if ($section) {
+                    $section.show();
+                    $requiredFields.prop('disabled', false).prop('required', true);
+                }
+            });
+
+            let searchTimeout;
+            function handleMedDraSearch(inputElement, resultsElement, codeElement, termElement) {
+                const query = $(inputElement).val();
+                if (query.length < 3) {
+                    $(resultsElement).hide().empty();
+                    $(codeElement).val('');
+                    $(termElement).val('');
+                    return;
+                }
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    fetch(`/api/meddra/search?q=${query}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            $(resultsElement).empty().show();
+                            if (data.length === 0) {
+                                $(resultsElement).append('<a class="list-group-item">No results found</a>');
+                            }
+                            data.forEach(item => {
+                                $(resultsElement).append(
+                                    `<a class="list-group-item" data-code="${item.meddra_code}" data-term="${item.meddra_term}">
+                                        <strong>${item.meddra_term}</strong> (${item.llt_name})<br>
+                                        <small class="text-muted">${item.soc_name}</small>
+                                    </a>`
+                                );
+                            });
+                        }).catch(error => console.error('Error fetching MedDRA terms:', error));
+                }, 300);
+            }
+
+            $('#symptom-meddra-search').on('keyup', function () {
+                handleMedDraSearch(this, '#symptom-search-results', '#symptom_meddra_code', '#symptom_meddra_term');
+            });
+            $('#ae-meddra-search').on('keyup', function () {
+                handleMedDraSearch(this, '#ae-search-results', '#ae_meddra_code', '#ae_meddra_term');
+            });
+            $('#symptom-search-results').on('click', '.list-group-item', function () {
+                const code = $(this).data('code');
+                const term = $(this).data('term');
+                if (code) {
+                    $('#symptom_meddra_code').val(code);
+                    $('#symptom_meddra_term').val(term);
+                    $('#symptom-meddra-search').val(term);
+                }
+                $('#symptom-search-results').hide().empty();
+            });
+            $('#ae-search-results').on('click', '.list-group-item', function () {
+                const code = $(this).data('code');
+                const term = $(this).data('term');
+                if (code) {
+                    $('#ae_meddra_code').val(code);
+                    $('#ae_meddra_term').val(term);
+                    $('#ae-meddra-search').val(term);
+                }
+                $('#ae-search-results').hide().empty();
+            });
+            $(document).on('click', function (e) {
+                if (!$(e.target).closest('.search-wrapper').length) {
+                    $('.search-results').hide().empty();
+                }
+            });
+
+            newRecordingForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                const recordingType = recordingTypeSelect.value;
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const spinner = submitBtn.querySelector('.spinner-border');
+
+                // Standard Submit for non-file types
+                if (recordingType !== 'EEG' && recordingType !== 'Wearable' && recordingType !== 'Imaging') {
+                    spinner.style.display = 'inline-block';
+                    submitBtn.disabled = true;
+                    this.submit();
+                    return;
+                }
+                
+                // Imaging Submit (Single file, no zip)
+                if (recordingType === 'Imaging') {
+                    if (imagingFilesInput.files.length === 0) {
+                        alert('Please select an image file to upload.');
+                        return;
+                    }
+                    spinner.style.display = 'inline-block';
+                    submitBtn.disabled = true;
+
+                    const formData = new FormData(newRecordingForm);
+                    // Append file directly to 'recording_file' key
+                    formData.append('recording_file', imagingFilesInput.files[0], imagingFilesInput.files[0].name);
+                    
+                    fetch(newRecordingForm.action, {
+                        method: 'POST',
+                        body: formData,
+                    }).then(response => {
+                        if (response.ok) {
+                            window.location.reload();
+                        } else {
+                            return response.text().then(text => { throw new Error(text || 'Upload failed'); });
+                        }
+                    }).catch(error => {
+                        console.error('Error:', error);
+                        alert('An error occurred during upload: ' + error.message);
+                        spinner.style.display = 'none';
+                        submitBtn.disabled = false;
+                    });
+                    return;
+                }
+
+                // EEG/Wearable Submit (Zip files)
+                if (filesInput.files.length === 0) {
+                    alert('Please select one or more files to upload.');
+                    return;
+                }
+
+                spinner.style.display = 'inline-block';
+                submitBtn.disabled = true;
+
+                const zip = new JSZip();
+                for (let i = 0; i < filesInput.files.length; i++) {
+                    zip.file(filesInput.files[i].name, filesInput.files[i]);
+                }
+
+                zip.generateAsync({ type: "blob", compression: "DEFLATE" })
+                    .then(function (content) {
+                        const formData = new FormData(newRecordingForm);
+                        formData.append('recording_file', content, 'recording_data.zip');
+                        formData.delete(filesInput.name);
+
+                        fetch(newRecordingForm.action, {
+                            method: 'POST',
+                            body: formData,
+                        })
+                            .then(response => {
+                                if (response.ok) {
+                                    window.location.reload();
+                                } else {
+                                    return response.text().then(text => {
+                                        throw new Error(text || 'Upload failed');
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('An error occurred during upload: ' + error.message);
+                                spinner.style.display = 'none';
+                                submitBtn.disabled = false;
+                            });
+                    })
+                    .catch(err => {
+                        console.error("Error zipping files:", err);
+                        alert("An error occurred while zipping files.");
+                        spinner.style.display = 'none';
+                        submitBtn.disabled = false;
+                    });
+            });
+
+            const exportPacketForm = document.getElementById('exportPacketForm');
+            if (exportPacketForm) {
+                exportPacketForm.addEventListener('submit', function (event) {
+                    const selectedOptions = Array.from(document.getElementById('multimodalSubjectSelect').selectedOptions);
+
+                    if (selectedOptions.length === 0) {
+                        event.preventDefault();
+                        alert('Please select at least one subject to export.');
+                    } else {
+                        const btn = document.getElementById('runMultimodalPacket');
+                        const spinner = btn.querySelector('.spinner-border');
+                        const icon = btn.querySelector('.fas');
+                        const btnText = btn.querySelector('.button-text');
+
+                        spinner.style.display = 'inline-block';
+                        icon.style.display = 'none';
+                        btn.disabled = true;
+                        if (btnText) btnText.textContent = ' Generating Packet...';
+                        setTimeout(() => {
+                            spinner.style.display = 'none';
+                            icon.style.display = 'inline-block';
+                            btn.disabled = false;
+                            if (btnText) btnText.textContent = ' Download Analysis Packet';
+                        }, 15000);
+                    }
+                });
+            }
+
+            const confirmDeleteModal = document.getElementById('confirmDeleteModal');
+            if (confirmDeleteModal) {
+                confirmDeleteModal.addEventListener('show.bs.modal', function (event) {
+                    const button = event.relatedTarget;
+                    const deleteUrl = button.getAttribute('data-bs-delete-url');
+                    const deleteForm = document.getElementById('deleteRecordForm');
+                    if (deleteForm) {
+                        deleteForm.action = deleteUrl;
+                    }
+                });
+            }
+
+            const importForm = document.getElementById('importTemplateForm');
+            if (importForm) {
+                importForm.addEventListener('submit', function (event) {
+                    const fileInput = document.getElementById('template_file');
+                    if (fileInput.files.length === 0) {
+                        event.preventDefault();
+                        alert('Please select a file to upload.');
+                        return;
+                    }
+
+                    const submitBtn = document.getElementById('importSubmitButton');
+                    const spinner = submitBtn.querySelector('.spinner-border');
+                    const btnText = submitBtn.querySelector('.button-text');
+
+                    spinner.style.display = 'inline-block';
+                    btnText.textContent = ' Processing...';
+                    submitBtn.disabled = true;
+                });
+            }
+
+        });
+    </script>
+</body>
+{% endblock %}

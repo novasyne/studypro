@@ -4,16 +4,19 @@ import itertools
 import json
 import math
 import os
-import pickle
 import random
 import re
+import secrets
+import threading
 import uuid
 import zipfile
-from datetime import date, datetime, timedelta
+from collections import defaultdict
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
 from urllib.parse import quote_plus
 import numpy as np
+_rng = np.random.default_rng()
 import openai
 import pandas as pd
 import pydicom
@@ -28,7 +31,9 @@ from flask_login import (
     login_user, logout_user, login_required, current_user
 )
 from flask_mail import Message
-from itsdangerous import SignatureExpired, BadTimeSignature
+from flask_wtf.csrf import CSRFProtect
+from itsdangerous import SignatureExpired, BadTimeSignature, BadSignature
+from markupsafe import escape as html_escape
 from azure.core.exceptions import ResourceNotFoundError
 from azure.storage.blob import (
     BlobServiceClient, BlobSasPermissions, generate_blob_sas
@@ -71,7 +76,7 @@ from models import (
 import mne
 import tempfile
 import warnings
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import urlparse
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -80,7 +85,6 @@ import requests
 
 from flask import request, redirect, url_for, flash, render_template
 from flask_mail import Message
-import re
 
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -159,10 +163,10 @@ class ClinicalTrialsService:
             return None
         try:
             return datetime.strptime(date_str, "%Y-%m-%d")
-        except:
+        except ValueError:
             try:
                 return datetime.strptime(date_str, "%Y-%m")
-            except:
+            except ValueError:
                 return None
 
 
@@ -259,9 +263,9 @@ HELP_CONTENT = {
             <h6>How to Use This Page:</h6>
             <ul>
                 <li><strong>View Arms:</strong> The table displays all current arms for this study.</li>
-                <li><strong>Edit a Arm:</strong> You can directly edit the <strong>Arm Name</strong> and <strong>Description</strong> in the text fields within the table.</li>
+                <li><strong>Edit an Arm:</strong> You can directly edit the <strong>Arm Name</strong> and <strong>Description</strong> in the text fields within the table.</li>
                 <li><strong>Add a New Arm:</strong> Click the <strong>Add Arm</strong> button to add a new row to the table. Fill in the details for your new arm.</li>
-                <li><strong>Remove a Arm:</strong> Click the <strong>Remove</strong> button next to a arm to delete it. Please be careful, as this action cannot be undone.</li>
+                <li><strong>Remove an Arm:</strong> Click the <strong>Remove</strong> button next to an arm to delete it. Please be careful, as this action cannot be undone.</li>
             </ul>
             <p><strong>Important:</strong> After making any changes (adding, editing, or removing), you must click the <strong>Save Changes</strong> button to apply them to the study. Clicking <strong>Cancel</strong> will discard all your changes.</p>
         """
@@ -290,7 +294,7 @@ HELP_CONTENT = {
             <hr>
             <h6>Key Functions:</h6>
             <ul>
-                <li><strong>Add Subject:</strong> Click this button to open the subject creation form. The <strong>External Subject Code</strong> is a crucial, unique identifier used for de-identification. You can also assign the subject to a arm and fill in their demographic and baseline health information.</li>
+                <li><strong>Add Subject:</strong> Click this button to open the subject creation form. The <strong>External Subject Code</strong> is a crucial, unique identifier used for de-identification. You can also assign the subject to an arm and fill in their demographic and baseline health information.</li>
                 <li><strong>Actions Column:</strong> Each subject has a set of management tools:
                     <ul>
                         <li><strong>Edit:</strong> Modify the subject's core demographic or baseline data.</li>
@@ -724,18 +728,25 @@ COMMON_EEG_CHANNELS = {
 }
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024 * 1024 
-app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
+app.config['MAX_CONTENT_LENGTH'] = 1 * 1024 * 1024 * 1024
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+app.config['WTF_CSRF_HEADERS'] = ['X-CSRFToken']
+csrf = CSRFProtect(app)
 
-
-DB_USER = os.environ.get('DB_USER')
-DB_PASS = os.environ.get('DB_PASS')
-DB_SERVER = os.environ.get('DB_SERVER')
-DB_NAME = os.environ.get('DB_NAME')
+DB_USER = os.environ.get('DB_USER') or ''
+DB_PASS = os.environ.get('DB_PASS') or ''
+DB_SERVER = os.environ.get('DB_SERVER') or ''
+DB_NAME = os.environ.get('DB_NAME') or ''
+encoded_user = quote_plus(DB_USER)
 encoded_password = quote_plus(DB_PASS)
-app.config['SQLALCHEMY_DATABASE_URI'] = f'mssql+pyodbc://{DB_USER}:{encoded_password}@{DB_SERVER}:1433/{DB_NAME}?driver=ODBC+Driver+17+for+SQL+Server&Connection+Timeout=60'
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    f'mssql+pyodbc://{encoded_user}:{encoded_password}@{DB_SERVER}:1433/{DB_NAME}'
+    '?driver=ODBC+Driver+17+for+SQL+Server&Connection+Timeout=60'
+)
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {"pool_pre_ping": True, "pool_recycle": 1800}
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ECHO'] = False
+app.config['EMAIL_CONFIRM_MAX_AGE_SECONDS'] = int(os.environ.get('EMAIL_CONFIRM_MAX_AGE_SECONDS', 3600))
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True').lower() in ['true', 'on', '1']
@@ -982,10 +993,10 @@ def _load_and_detect_eeg_type(recording_id: str):
 
 
 def generate_synthetic_sample(s1: np.ndarray, s2: np.ndarray, noise_level: float) -> np.ndarray:
-    interpolation_factor = np.random.uniform(0.3, 0.7)
+    interpolation_factor = _rng.uniform(0.3, 0.7)
     new_sample = s1 + (s2 - s1) * interpolation_factor
     noise = (
-        np.random.normal(0, 1, new_sample.shape)
+        _rng.normal(0, 1, new_sample.shape)
         * np.std(np.vstack((s1, s2)), axis=0)
         * noise_level
     )
@@ -1009,13 +1020,13 @@ def create_synthetic_dataset(features_df: pd.DataFrame, n_samples: int) -> pd.Da
         highly_corr_pairs = np.argwhere(corr_matrix > 0.5)
         if len(highly_corr_pairs) == 0:
             indices = np.arange(len(features_norm))
-            pairs_i = np.random.choice(indices, n_samples)
-            pairs_j = np.random.choice(indices, n_samples)
+            pairs_i = _rng.choice(indices, n_samples)
+            pairs_j = _rng.choice(indices, n_samples)
             highly_corr_pairs = np.vstack([pairs_i, pairs_j]).T
 
     synthetic_samples = []
     for _ in range(n_samples):
-        idx1, idx2 = highly_corr_pairs[np.random.randint(len(highly_corr_pairs))]
+        idx1, idx2 = highly_corr_pairs[_rng.integers(len(highly_corr_pairs))]
         sample1 = features_norm[idx1]
         sample2 = features_norm[idx2]
         new_norm_sample = generate_synthetic_sample(
@@ -1133,7 +1144,7 @@ def generate_demo_eeg_and_biomarkers(
         synthetic_df = create_synthetic_dataset(source_features_df, n_samples)
         
         if synthetic_df.empty:
-            app.logger.warning(f"Demo EEG: Synthetic dataframe was empty. Skipping.")
+            app.logger.warning("Demo EEG: Synthetic dataframe was empty. Skipping.")
             return
 
         # Save Synthetic EEG CSV to 'recordings' container
@@ -1227,6 +1238,65 @@ def _format_variable_name(name):
     return processed_name[0].upper() + processed_name[1:] if processed_name else ""
 
 
+_ALLOWED_SUBJECT_FIELDS = frozenset([
+    'gender', 'ethnicity', 'race', 'handedness', 'smoking_status',
+    'alcohol_intake', 'first_name', 'last_name', 'status',
+    'height_cm', 'weight_kg',
+])
+
+
+_ALLOWED_UPLOAD_EXTENSIONS = frozenset([
+    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt',
+    'png', 'jpg', 'jpeg', 'gif', 'bmp', 'tiff',
+    'zip', 'edf', 'nii', 'dcm',
+])
+_MAX_UPLOAD_BYTES = 100 * 1024 * 1024  # 100 MB
+
+_failed_logins: dict = defaultdict(list)
+_failed_logins_lock = threading.Lock()
+_LOGIN_MAX_ATTEMPTS = 10
+_LOGIN_WINDOW_SECONDS = 300
+
+
+def _login_blocked(ip: str) -> bool:
+    """Return True if this IP has exceeded the failed-login threshold."""
+    if app.config.get('TESTING'):
+        return False
+    now = datetime.now(timezone.utc)
+    with _failed_logins_lock:
+        recent = [t for t in _failed_logins[ip]
+                  if (now - t).total_seconds() < _LOGIN_WINDOW_SECONDS]
+        _failed_logins[ip] = recent
+        return len(recent) >= _LOGIN_MAX_ATTEMPTS
+
+
+def _record_failed_login(ip: str) -> None:
+    if app.config.get('TESTING'):
+        return
+    with _failed_logins_lock:
+        _failed_logins[ip].append(datetime.now(timezone.utc))
+
+
+def _allowed_upload(filename: str) -> bool:
+    ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    return ext in _ALLOWED_UPLOAD_EXTENSIONS
+
+
+def _require_study_membership(study_id):
+    """Abort with 403 if the current user is not a participant in the study."""
+    from flask import abort
+    participant = StudyParticipant.query.filter_by(email=current_user.email).first()
+    if not participant:
+        abort(403)
+    link = StudyParticipantLink.query.filter_by(
+        study_id=study_id,
+        participant_id=str(participant.participant_id).lower(),
+    ).first()
+    if not link:
+        abort(403)
+    return link
+
+
 def _build_demographic_table(count_pivot, percent_pivot):
     """Builds an HTML table for the demographic distribution report."""
     html = "<div class='table-responsive mb-3'>"
@@ -1234,17 +1304,17 @@ def _build_demographic_table(count_pivot, percent_pivot):
     html += "<thead class='thead-light'><tr><th>Category</th>"
 
     for arm_name in count_pivot.columns:
-        html += f"<th colspan='2' class='text-center'>{arm_name}</th>"
+        html += f"<th colspan='2' class='text-center'>{html_escape(str(arm_name))}</th>"
     html += "</tr><tr><th></th>"
-    
+
     for _ in count_pivot.columns:
         html += "<th class='text-center'>N</th><th class='text-center'>%</th>"
     html += "</tr></thead><tbody>"
-    
+
     for category, row in count_pivot.iterrows():
         is_total_row = (category == 'Total')
         row_style = "fw-bold bg-light" if is_total_row else ""
-        html += f"<tr class='{row_style}'><td>{category}</td>"
+        html += f"<tr class='{row_style}'><td>{html_escape(str(category))}</td>"
         
         for arm_name in count_pivot.columns:
             count = row[arm_name]
@@ -1266,17 +1336,17 @@ def _build_distribution_table(count_pivot, percent_pivot, category_label, arm_na
     all_cols = list(arm_names) + ['Total']
     
     for col_name in all_cols:
-        html += f"<th colspan='2' class='text-center'>{col_name}</th>"
-    html += "</tr><tr><th>" + category_label + "</th>"
-    
+        html += f"<th colspan='2' class='text-center'>{html_escape(str(col_name))}</th>"
+    html += "</tr><tr><th>" + html_escape(str(category_label)) + "</th>"
+
     for _ in all_cols:
         html += "<th class='text-center'>N</th><th class='text-center'>%</th>"
     html += "</tr></thead><tbody>"
-    
+
     for category, row in count_pivot.iterrows():
         is_total_row = (category == 'Total Subjects (N)')
         row_style = "fw-bold bg-light" if is_total_row else ""
-        html += f"<tr class='{row_style}'><td>{category}</td>"
+        html += f"<tr class='{row_style}'><td>{html_escape(str(category))}</td>"
         
         for col_name in all_cols:
             count = int(row[col_name])
@@ -1291,7 +1361,7 @@ def _build_distribution_table(count_pivot, percent_pivot, category_label, arm_na
     return html
 
 
-@app.route('/study/<study_id>/download_template')
+@app.route('/study/<study_id>/download_template', methods=['GET'])
 @login_required
 def download_biomarker_template(study_id):
     try:
@@ -1321,16 +1391,16 @@ def download_biomarker_template(study_id):
         output = BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             df.to_excel(writer, sheet_name='Data_Capture', index=False)
-            workbook = writer.book
-            worksheet = writer.sheets['Data_Capture']
-            worksheet.write_string('A10', 'Instructions:')
-            worksheet.write_string('A11', '1. Enter Subject ID (must match the ID in the system).')
-            worksheet.write_string('A12', '2. Enter Date in YYYY-MM-DD format.')
-            worksheet.write_string('A13', '3. Enter Time in HH:MM format (24-hour).')
-            worksheet.write_string('A14', '4. Fill in the biomarker values for each subject visit.')
             for i, col in enumerate(all_columns):
-                column_len = max(len(col), 15)
-                worksheet.set_column(i, i, column_len)
+                worksheet = writer.sheets['Data_Capture']
+                worksheet.set_column(i, i, max(len(col), 15))
+            instructions_ws = writer.book.add_worksheet('Instructions')
+            instructions_ws.write_string('A1', 'Instructions:')
+            instructions_ws.write_string('A2', '1. Enter Subject ID (must match the ID in the system).')
+            instructions_ws.write_string('A3', '2. Enter Date in YYYY-MM-DD format.')
+            instructions_ws.write_string('A4', '3. Enter Time in HH:MM format (24-hour).')
+            instructions_ws.write_string('A5', '4. Fill in the biomarker values for each subject visit.')
+            instructions_ws.set_column(0, 0, 70)
 
         output.seek(0)
         filename = f"{study.name.replace(' ', '_')}_Biomarker_Template.xlsx"
@@ -1350,6 +1420,7 @@ def download_biomarker_template(study_id):
 @app.route('/study/<study_id>/import_template', methods=['POST'])
 @login_required
 def import_biomarker_template(study_id):
+    _require_study_membership(study_id)
     if 'template_file' not in request.files:
         flash('No file selected for upload.', 'danger')
         return redirect(url_for('study_recordings', study_id=study_id))
@@ -1488,7 +1559,7 @@ def import_biomarker_template(study_id):
     return redirect(url_for('study_recordings', study_id=study_id))
 
 
-@app.route('/visualize_eeg/<recording_id>')
+@app.route('/visualize_eeg/<recording_id>', methods=['GET'])
 @login_required
 def visualize_eeg(recording_id):
     """
@@ -1516,7 +1587,7 @@ def visualize_eeg(recording_id):
         return redirect(url_for('main_app'))
 
     # Load and detect data type
-    data_object, data_type, filename, error_message = _load_and_detect_eeg_type(recording_id)
+    _, data_type, _, error_message = _load_and_detect_eeg_type(recording_id)
 
     if data_type == "ERROR":
         flash(f"Could not visualize EEG: {error_message}", 'danger')
@@ -1524,9 +1595,9 @@ def visualize_eeg(recording_id):
 
     data_type_display = "Unknown"
     if data_type == "TIME_DOMAIN":
-        data_type_display = f"Time-Domain"
+        data_type_display = "Time-Domain"
     elif data_type == "FREQUENCY_DOMAIN":
-        data_type_display = f"Frequency-Domain (PSD)"
+        data_type_display = "Frequency-Domain (PSD)"
 
     return render_template(
         'visualize_eeg.html',
@@ -1539,7 +1610,7 @@ def visualize_eeg(recording_id):
     )
 
 
-@app.route('/api/visualize_eeg/<recording_id>/<plot_type>')
+@app.route('/api/visualize_eeg/<recording_id>/<plot_type>', methods=['GET'])
 @login_required
 def api_visualize_eeg_plot(recording_id, plot_type):
     """
@@ -1547,7 +1618,7 @@ def api_visualize_eeg_plot(recording_id, plot_type):
     or a Matplotlib plot.
     """
     try:
-        data_object, data_type, filename, error_message = _load_and_detect_eeg_type(recording_id)
+        data_object, data_type, _, error_message = _load_and_detect_eeg_type(recording_id)
 
         if data_type == "ERROR":
             return jsonify({'error': error_message}), 400
@@ -1686,12 +1757,12 @@ def store_user_in_g():
         g.user_email = 'anonymous'
 
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def index():
     return render_template('index.html')
 
 
-@app.route('/learn_more')
+@app.route('/learn_more', methods=['GET'])
 def learn_more():
     """
     Renders the 'Learn More' page which contains detailed information,
@@ -1700,38 +1771,39 @@ def learn_more():
     return render_template('learn_more.html')
 
 
-@app.route('/best_practices')
+@app.route('/best_practices', methods=['GET'])
 @login_required
 def best_practices():
     """Renders the Best Practices Guide page."""
     return render_template('best_practices.html')
 
 
-@app.route('/help')
+@app.route('/help', methods=['GET'])
 @login_required
 def help_content():
     page = request.args.get('page', 'default')
     return jsonify(HELP_CONTENT.get(page, HELP_CONTENT['default']))
 
 
-@app.route('/logout')
+@app.route('/logout', methods=['GET'])
 @login_required
 def logout():
     logout_user()
+    session.clear()
     return redirect(url_for('index'))
 
 
-@app.route('/about')
+@app.route('/about', methods=['GET'])
 def about():
     return render_template('about.html')
 
 
-@app.route('/faq')
+@app.route('/faq', methods=['GET'])
 def faq():
     return render_template('faq.html')
 
 
-@app.route('/features')
+@app.route('/features', methods=['GET'])
 def features():
     return render_template('features.html')
 
@@ -1800,6 +1872,11 @@ def login():
         return redirect(url_for('main_app'))
         
     if request.method == 'POST':
+        ip = request.remote_addr or '0.0.0.0'
+        if _login_blocked(ip):
+            flash('Too many failed login attempts. Please try again later.', 'danger')
+            return redirect(url_for('login'))
+
         email = request.form['email']
         password = request.form['password']
         user = User.query.filter_by(email=email).first()
@@ -1812,17 +1889,21 @@ def login():
                 flash('Please confirm your email address before logging in.', 'warning')
                 return redirect(url_for('login'))
         else:
+            _record_failed_login(ip)
             flash('Invalid email or password.', 'danger')
             return redirect(url_for('login'))
             
     return render_template('login.html')
 
 
-@app.route('/confirm_email/<token>')
+@app.route('/confirm_email/<token>', methods=['GET'])
 def confirm_email(token):
     try:
-        email = extensions.s.loads(token, salt='email-confirm-salt', max_age=3600) # 3600=1 hour
-    except (SignatureExpired, BadTimeSignature):
+        email = extensions.s.loads(
+            token, salt='email-confirm-salt',
+            max_age=app.config.get('EMAIL_CONFIRM_MAX_AGE_SECONDS', 3600)
+        )
+    except BadSignature:
         flash('The confirmation link is invalid or has expired.', 'danger')
         return redirect(url_for('login'))
 
@@ -1836,7 +1917,7 @@ def confirm_email(token):
     return redirect(url_for('login'))
 
 
-@app.route('/main')
+@app.route('/main', methods=['GET'])
 @login_required
 def main_app():
     user_as_participant = StudyParticipant.query.filter_by(email=current_user.email).first()
@@ -1970,26 +2051,22 @@ def create_study_step2():
                 arm_name = arm.get('arm_name', '').strip()
                 description = arm.get('description', '').strip()
                 if not arm_name or not description:
-                    flash(f'Row {i+1} is incomplete. Please provide both a arm name and a description for every entry.', 'warning')
+                    flash(f'Row {i+1} is incomplete. Please provide both an arm name and a description for every entry.', 'warning')
                     session['new_study_arms'] = arms_data
                     return render_template('create_study_step2.html', arms_data=arms_data)
 
             seen_names = set()
             seen_descriptions = set()
             for group in arms_data:
-                seen_names = set()
-                seen_descriptions = set()
-                for group in arms_data:
-                    # Change variable name to 'current_arm_name' for clarity, or just use 'arm' consistent with below
-                    current_arm_name = group.get('arm_name', '').strip() 
-                    description = group.get('description', '').strip()
+                current_arm_name = group.get('arm_name', '').strip()
+                description = group.get('description', '').strip()
 
-                    if current_arm_name in seen_names:
-                        flash(f'Duplicate arm name found: "{current_arm_name}". Please ensure all arm names are unique.', 'warning')
-                        session['new_study_arms'] = arms_data
-                        return render_template('create_study_step2.html', arms_data=arms_data)
-                    seen_names.add(current_arm_name)
-                
+                if current_arm_name in seen_names:
+                    flash(f'Duplicate arm name found: "{current_arm_name}". Please ensure all arm names are unique.', 'warning')
+                    session['new_study_arms'] = arms_data
+                    return render_template('create_study_step2.html', arms_data=arms_data)
+                seen_names.add(current_arm_name)
+
                 if description in seen_descriptions:
                     flash(f'Duplicate description found: "{description}". Please ensure all descriptions are unique.', 'warning')
                     session['new_study_arms'] = arms_data
@@ -2004,7 +2081,7 @@ def create_study_step2():
         arms_data = [{'arm_name': '', 'description': ''}]
         session['new_study_arms'] = arms_data
 
-    return render_template('create_study_step2.html', arms_data=[])
+    return render_template('create_study_step2.html', arms_data=arms_data)
 
 
 @app.route('/create_study/step3', methods=['GET', 'POST'])
@@ -2027,7 +2104,9 @@ def create_study_step3():
         if 'study_name' in request.form and 'study_description' in request.form:
             session['new_study_details'] = {
                 'name': request.form.get('study_name', ''),
-                'description': request.form.get('study_description', '')
+                'description': request.form.get('study_description', ''),
+                'start_date': request.form.get('start_date', ''),
+                'end_date': request.form.get('end_date', ''),
             }
             session.modified = True
 
@@ -2069,6 +2148,8 @@ def create_study_step3():
             study_details = session.get('new_study_details', {})
             study_name = study_details.get('name', '').strip()
             study_description = study_details.get('description', '').strip()
+            start_date_str = study_details.get('start_date', '').strip()
+            end_date_str = study_details.get('end_date', '').strip()
 
             if not study_name or not study_description:
                 flash('Study Name and Description are required.', 'warning')
@@ -2079,11 +2160,18 @@ def create_study_step3():
             if not any(p.get('role', '').lower() == 'principal investigator' for p in participants):
                 flash('At least one participant must be assigned the role "Principal Investigator".', 'warning')
                 return redirect(url_for('create_study_step3'))
-            
+
             current_user_in_list = any(p.get('email', '').lower() == current_user.email.lower() for p in participants)
             if not current_user_in_list:
                 flash('You must add yourself as a participant to the study in any role.', 'warning')
                 return redirect(url_for('create_study_step3'))
+
+            from datetime import date as date_type
+            def _parse_date(s):
+                try:
+                    return date_type.fromisoformat(s) if s else None
+                except ValueError:
+                    return None
 
             try:
                 new_study = Study(
@@ -2091,7 +2179,9 @@ def create_study_step3():
                     description=study_description,
                     study_type_id=session['new_study_type_id'],
                     status='Planned',
-                    created_at=datetime.utcnow()
+                    start_date=_parse_date(start_date_str),
+                    end_date=_parse_date(end_date_str),
+                    created_at=datetime.now(timezone.utc)
                 )
                 db.session.add(new_study)
                 db.session.flush() 
@@ -2266,7 +2356,7 @@ def edit_study(study_id):
         elif new_budget_amount is not None and new_budget_amount > 0:
             new_entry = FinancialLedger(
                 study_id=study_id,
-                transaction_date=study.start_date or datetime.utcnow().date(),
+                transaction_date=study.start_date or datetime.now(timezone.utc).date(),
                 transaction_type='BUDGET',
                 amount=new_budget_amount,
                 description='Initial study budget'
@@ -2298,6 +2388,7 @@ def edit_study(study_id):
 @app.route('/study_settings/<study_id>/save', methods=['POST'])
 @login_required
 def save_study_settings(study_id):
+    _require_study_membership(study_id)
     study = Study.query.get_or_404(study_id)
     settings = StudySettings.query.get(study_id)
     
@@ -2453,6 +2544,19 @@ def revoke_study(study_id):
     study = Study.query.get_or_404(study_id)
     study_name = study.name
 
+    participant = StudyParticipant.query.filter_by(email=current_user.email).first()
+    if not participant:
+        flash('You do not have permission to delete this study.', 'danger')
+        return redirect(url_for('main_app'))
+    link = StudyParticipantLink.query.filter_by(
+        study_id=study_id,
+        participant_id=participant.participant_id,
+        is_admin=True,
+    ).first()
+    if not link:
+        flash('You do not have permission to delete this study.', 'danger')
+        return redirect(url_for('main_app'))
+
     try:
         subjects = Subject.query.with_entities(Subject.subject_id).filter_by(study_id=study_id).all()
         subject_ids = [s[0] for s in subjects]
@@ -2493,6 +2597,7 @@ def edit_arms(study_id):
     study = Study.query.get_or_404(study_id)
 
     if request.method == 'POST':
+        _require_study_membership(study_id)
         action = request.form.get('action')
         arms_data = []
         i = 0
@@ -2577,12 +2682,11 @@ def manage_subjects(study_id):
     arms = StudyArm.query.filter_by(study_id=study_id).order_by(StudyArm.arm_name).all()
 
     if request.method == 'POST':
+        _require_study_membership(study_id)
         action = request.form.get('action')
         if action == 'save_subject':
             subject_id = request.form.get('subject_id')
             external_code = request.form.get('external_subject_code', '').strip()
-            arm_id = request.form.get('arm_id') or None
-
             if not external_code:
                 flash('External Subject Code is a mandatory field.', 'danger')
                 return redirect(url_for('manage_subjects', study_id=study_id))
@@ -2753,27 +2857,34 @@ def get_study_documents(study_id):
 @login_required
 def upload_document(study_id):
     """Handles file upload via AJAX and returns a JSON response."""
+    _require_study_membership(study_id)
     if 'document' not in request.files or not request.files['document'].filename:
         return jsonify({'status': 'error', 'message': 'No file selected for upload.'}), 400
-    
+
     file = request.files['document']
+    if not _allowed_upload(file.filename):
+        return jsonify({'status': 'error', 'message': 'File type not permitted.'}), 400
+
     description = request.form.get('description', '').strip()
 
     if not description:
         return jsonify({'status': 'error', 'message': 'A description for the document is required.'}), 400
     
     try:
+        data = file.read()
+        if len(data) > _MAX_UPLOAD_BYTES:
+            return jsonify({'status': 'error', 'message': 'File exceeds the 100 MB size limit.'}), 413
         new_doc = StudyDocument(
             study_id=study_id,
             filename=file.filename,
             description=description,
-            data=file.read()
+            data=data,
         )
         db.session.add(new_doc)
         db.session.commit()
-        
+
         return jsonify({
-            'status': 'success', 
+            'status': 'success',
             'message': f'Document "{file.filename}" was uploaded successfully.'
         })
     except Exception as e:
@@ -2782,7 +2893,7 @@ def upload_document(study_id):
         return jsonify({'status': 'error', 'message': 'An internal error occurred. Please try again.'}), 500
 
 
-@app.route('/document/<document_id>/download')
+@app.route('/document/<document_id>/download', methods=['GET'])
 @login_required
 def download_document(document_id):
     """Serves a document from the database for download."""
@@ -2827,31 +2938,44 @@ def get_subject_documents(subject_id):
 @login_required
 def upload_subject_document(subject_id):
     """Handles file upload for a subject via AJAX and returns a JSON response."""
+    subject = Subject.query.get_or_404(subject_id)
+    _require_study_membership(str(subject.study_id))
     if 'document' not in request.files or not request.files['document'].filename:
         return jsonify({'status': 'error', 'message': 'No file selected for upload.'}), 400
-    
+
     file = request.files['document']
+    if not _allowed_upload(file.filename):
+        return jsonify({'status': 'error', 'message': 'File type not permitted.'}), 400
+
     description = request.form.get('description', '').strip()
 
     if not description:
         return jsonify({'status': 'error', 'message': 'A description for the document is required.'}), 400
-    
-    new_doc = SubjectDocument(
-        subject_id=subject_id,
-        filename=file.filename,
-        description=description,
-        data=file.read()
-    )
-    db.session.add(new_doc)
-    db.session.commit()
-    
+
+    try:
+        data = file.read()
+        if len(data) > _MAX_UPLOAD_BYTES:
+            return jsonify({'status': 'error', 'message': 'File exceeds the 100 MB size limit.'}), 413
+        new_doc = SubjectDocument(
+            subject_id=subject_id,
+            filename=file.filename,
+            description=description,
+            data=data,
+        )
+        db.session.add(new_doc)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Failed to save subject document for {subject_id}: {e}")
+        return jsonify({'status': 'error', 'message': 'An error occurred while saving the document.'}), 500
+
     return jsonify({
-        'status': 'success', 
+        'status': 'success',
         'message': f'Document "{file.filename}" was uploaded successfully.'
     })
 
 
-@app.route('/subject_document/<document_id>/download')
+@app.route('/subject_document/<document_id>/download', methods=['GET'])
 @login_required
 def download_subject_document(document_id):
     """Serves a subject document from the database for download."""
@@ -3001,21 +3125,27 @@ def save_subject_history(subject_id):
         SubjectContact.query.filter_by(subject_id=subject_id).delete()
 
         for c in data.get('clinicians', []):
+            if not (c.get('first_name') or c.get('last_name') or c.get('email')):
+                continue
             db.session.add(SubjectClinician(
                 subject_id=subject_id, first_name=c.get('first_name'), last_name=c.get('last_name'),
                 specialty=c.get('specialty'), organization=c.get('organization'), city=c.get('city'),
                 country=c.get('country'), email=c.get('email'), phone=c.get('phone')
             ))
-        
+
         for d in data.get('diagnoses', []):
+            if not (d.get('diagnosis_code') or d.get('diagnosis_description')):
+                continue
             diag_date = datetime.strptime(d['diagnosis_date'], '%Y-%m-%d').date() if d.get('diagnosis_date') else None
             db.session.add(SubjectDiagnosis(
-                subject_id=subject_id, diagnosis_code=d.get('diagnosis_code'), 
+                subject_id=subject_id, diagnosis_code=d.get('diagnosis_code'),
                 diagnosis_description=d.get('diagnosis_description'), diagnosis_date=diag_date,
                 status=d.get('status'), primary_diagnosis=d.get('primary_diagnosis', False)
             ))
-        
+
         for m in data.get('medications', []):
+            if not m.get('medication_name'):
+                continue
             start_date = datetime.strptime(m['start_date'], '%Y-%m-%d').date() if m.get('start_date') else None
             end_date = datetime.strptime(m['end_date'], '%Y-%m-%d').date() if m.get('end_date') else None
             db.session.add(SubjectMedication(
@@ -3023,8 +3153,10 @@ def save_subject_history(subject_id):
                 route=m.get('route'), start_date=start_date, end_date=end_date,
                 indication=m.get('indication'), currently_taking=m.get('currently_taking', False)
             ))
-        
+
         for c in data.get('contacts', []):
+            if not c.get('contact_value'):
+                continue
             db.session.add(SubjectContact(
                 subject_id=subject_id, contact_type=c.get('contact_type'), contact_value=c.get('contact_value'),
                 preferred=c.get('preferred', False), verified=c.get('verified', False)
@@ -3039,7 +3171,7 @@ def save_subject_history(subject_id):
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
-@app.route('/study_recordings/<study_id>')
+@app.route('/study_recordings/<study_id>', methods=['GET'])
 @login_required
 def study_recordings(study_id):
     """
@@ -3199,7 +3331,7 @@ def delete_recording(recording_id):
     return redirect(url_for('study_recordings', study_id=study_id_for_redirect))
 
 
-@app.route('/recording/<recording_id>/download')
+@app.route('/recording/<recording_id>/download', methods=['GET'])
 @login_required
 def download_recording(recording_id):
     """ Generates a secure SAS URL and redirects the user to download the file from Azure. """
@@ -3236,7 +3368,7 @@ def download_recording(recording_id):
             blob_name=blob_name,
             account_key=blob_service_client.credential.account_key,
             permission=BlobSasPermissions(read=True),
-            expiry=datetime.utcnow() + timedelta(hours=1)
+            expiry=datetime.now(timezone.utc) + timedelta(hours=1)
         )
 
         sas_url = f"{data_uri}?{sas_token}"
@@ -3255,7 +3387,8 @@ def add_recording(study_id):
     Handles the complex "Add New Recording" form.
     This one route handles all recording types including Imaging.
     """
-    study = Study.query.get_or_404(study_id)
+    _require_study_membership(study_id)
+    Study.query.get_or_404(study_id)
     form = request.form
     
     subject_id = form.get('subject_id')
@@ -3277,17 +3410,7 @@ def add_recording(study_id):
         )
         db.session.add(new_rec)
 
-        if recording_type == 'Biomarker':
-            biomarker_rec = StudyRecordingBiomarker(
-                recording=new_rec,
-                study_id=study_id,
-                subject_id=subject_id,
-                biomarker_id=form.get('biomarker_id'),
-                biomarker_value=form.get('biomarker_value')
-            )
-            db.session.add(biomarker_rec)
-
-        elif recording_type == 'Scale':
+        if recording_type in ('Biomarker', 'Scale'):
             biomarker_rec = StudyRecordingBiomarker(
                 recording=new_rec,
                 study_id=study_id,
@@ -3348,7 +3471,7 @@ def add_recording(study_id):
 
             connect_str = os.environ.get('AZURE_BLOB')
             if not connect_str:
-                raise Exception("Azure connection string not configured.")
+                raise RuntimeError("Azure connection string not configured.")
 
             blob_service_client = BlobServiceClient.from_connection_string(connect_str)
             container_name = "recordings"
@@ -3409,7 +3532,7 @@ def add_recording(study_id):
     return redirect(url_for('study_recordings', study_id=study_id))
 
 
-@app.route('/export_study/<study_id>')
+@app.route('/export_study/<study_id>', methods=['GET'])
 @login_required
 def export_study(study_id):
     """
@@ -3950,7 +4073,7 @@ def export_study(study_id):
     )
 
 
-@app.route('/analytics/<study_id>')
+@app.route('/analytics/<study_id>', methods=['GET'])
 @login_required
 def analytics(study_id):
     """Renders the main analytics page and populates its dropdowns."""
@@ -4033,6 +4156,7 @@ def _build_categorical_plot(df, title, x_label, y_label):
 @login_required
 def run_analysis(study_id):
     """API endpoint to run analysis and return JSON for plots or stats."""
+    _require_study_membership(study_id)
     try:
         study_settings = StudySettings.query.get(study_id)
         BOKEH_TOOLS = "pan,wheel_zoom,box_zoom,reset,save"
@@ -4097,6 +4221,8 @@ def run_analysis(study_id):
                 field = data.get('demographics_field')
                 if not field:
                     return jsonify({'status': 'error', 'message': 'Please select a demographic field.'}), 400
+                if field not in _ALLOWED_SUBJECT_FIELDS:
+                    return jsonify({'status': 'error', 'message': 'Invalid demographic field.'}), 400
 
                 results = db.session.query(
                     getattr(Subject, field),
@@ -4574,8 +4700,9 @@ def run_analysis(study_id):
                     data_prompt_segment += df_demographics.describe().to_csv() + "\n\n"
                     data_prompt_segment += "--- DEMOGRAPHICS (CATEGORICAL SUMMARY) ---\n"
                     data_prompt_segment += df_demographics.describe(include='object').to_csv() + "\n\n"
-                except Exception: pass
-            
+                except Exception:  # suppress describe() errors on unexpected column types
+                    pass
+
             if not df_biomarkers.empty:
                 try:
                     df_biomarkers['biomarker_value'] = pd.to_numeric(df_biomarkers['biomarker_value'], errors='coerce')
@@ -4719,7 +4846,7 @@ def run_analysis(study_id):
             biomarker_name = df['biomarker_name'].iloc[0] if not df.empty else "Selected Biomarker"
 
             if df['biomarker_value'].isnull().all():
-                return jsonify({'status': 'error', 'message': f'No valid numeric data found for the selected biomarker(s). All recorded values are null or non-numeric.'}), 404
+                return jsonify({'status': 'error', 'message': 'No valid numeric data found for the selected biomarker(s). All recorded values are null or non-numeric.'}), 404
 
             if analysis_type == 'cohort_comparison':
                 cohort_ids = data.get('cohort_ids', [])
@@ -4851,7 +4978,7 @@ def run_analysis(study_id):
 
                     stat, p_value = f_oneway(*arms_data)
 
-                    html = f"<h3>One-Way ANOVA</h3>"
+                    html = "<h3>One-Way ANOVA</h3>"
                     html += f"<p><strong>Biomarker:</strong> {biomarker_name}</p>"
                     html += f"<p><strong>Arms Included:</strong> {', '.join(arm_names_used)}</p><hr>"
                     html += f"<p><strong>F-statistic:</strong> {stat:.4f}</p>"
@@ -4912,7 +5039,7 @@ def run_analysis(study_id):
                     except ValueError as e:
                             return jsonify({'status': 'error', 'message': f'Could not perform Kruskal-Wallis test: {e}'}), 400
 
-                    html = f"<h3>Kruskal-Wallis H Test</h3>"
+                    html = "<h3>Kruskal-Wallis H Test</h3>"
                     html += f"<p><strong>Biomarker:</strong> {biomarker_name}</p>"
                     html += f"<p><strong>Arms Included:</strong> {', '.join(arm_names_used)}</p><hr>"
                     html += f"<p><strong>H statistic:</strong> {stat:.4f}</p>"
@@ -5138,7 +5265,7 @@ def run_analysis(study_id):
         return jsonify({'status': 'error', 'message': f'An internal server error occurred: {str(e)}'}), 500
 
 
-@app.route('/finances/<study_id>')
+@app.route('/finances/<study_id>', methods=['GET'])
 @login_required
 def finances(study_id):
     study = Study.query.get_or_404(study_id)
@@ -5149,7 +5276,7 @@ def finances(study_id):
                 study_id=study_id,
                 transaction_type='BUDGET',
                 amount=study.budget_amount,
-                transaction_date=study.start_date or datetime.utcnow().date(),
+                transaction_date=study.start_date or datetime.now(timezone.utc).date(),
                 description="Initial budget allocation."
             )
             db.session.add(new_budget_entry)
@@ -5160,7 +5287,7 @@ def finances(study_id):
     total_budget = sum(t.amount for t in transactions if t.transaction_type in ['BUDGET', 'TOPUP'])
     total_expenses = sum(t.amount for t in transactions if t.transaction_type == 'EXPENSE')
     remaining_balance = total_budget - total_expenses
-    today_date = datetime.utcnow().date()
+    today_date = datetime.now(timezone.utc).date()
 
     forecast_date = None
     if transactions and total_expenses > 0:
@@ -5186,7 +5313,8 @@ def finances(study_id):
 @app.route('/finances/<study_id>/add_expense', methods=['POST'])
 @login_required
 def add_expense(study_id):
-    study = Study.query.get_or_404(study_id)
+    _require_study_membership(study_id)
+    Study.query.get_or_404(study_id)
     try:
         expense_date_str = request.form.get('expense_date')
         category_id = request.form.get('category_id')
@@ -5221,7 +5349,8 @@ def add_expense(study_id):
 @app.route('/finances/<study_id>/topup_budget', methods=['POST'])
 @login_required
 def topup_budget(study_id):
-    study = Study.query.get_or_404(study_id)
+    _require_study_membership(study_id)
+    Study.query.get_or_404(study_id)
     try:
         topup_date_str = request.form.get('topup_date')
         description = request.form.get('description')
@@ -5649,15 +5778,11 @@ def manage_account():
     current_participant_id = str(participant.participant_id).lower()
     user_to_edit = participant
     user_account = current_user
-    is_admin = db.session.query(StudyParticipantLink).filter(
-        StudyParticipantLink.participant_id == current_participant_id,
-        StudyParticipantLink.is_admin == True
-    ).first() is not None
 
     if request.method == 'POST':
         action = request.form.get('action')
         participant_id_to_edit = request.form.get('participant_id')
-        if participant_id_to_edit.lower() != current_participant_id:
+        if not participant_id_to_edit or participant_id_to_edit.lower() != current_participant_id:
             flash('You are not authorized to perform this action.', 'danger')
             return redirect(url_for('manage_account'))
 
@@ -5726,7 +5851,7 @@ def manage_account():
             if len(new_password) < 8: errors.append("at least 8 characters")
             if not re.search(r"[A-Z]", new_password): errors.append("an uppercase letter")
             if not re.search(r"[a-z]", new_password): errors.append("a lowercase letter")
-            if not re.search(r"[0-9]", new_password): errors.append("a number")
+            if not re.search(r"\d", new_password): errors.append("a number")
             
             if errors:
                 flash(f'Password must contain: {", ".join(errors)}.', 'danger')
@@ -5754,6 +5879,7 @@ def manage_account():
             'is_admin': is_admin_status
         })
 
+    is_admin = any(s['is_admin'] for s in studies_data)
     user_account_for_view = user_account
     
     roles_list = [
@@ -5920,13 +6046,13 @@ def _resolve_audit_json(data_dict):
             resolved_dict['wearable_device'] = f"{wearable.manufacturer} {wearable.device_name} (ID: {w_id})" if wearable else f"Unknown (ID: {w_id})"
         if 'image_type' in resolved_dict:
              resolved_dict['image_details'] = f"Image Type: {resolved_dict['image_type']}"
-    except Exception as e:
-        pass # unique indentifiers still remaining from objects probably removed earlier, so just don't resolve these
+    except Exception:
+        pass  # unique identifiers still remaining from objects probably removed earlier, so just don't resolve these
   
     return resolved_dict
 
 
-@app.route('/api/audit_log/<audit_log_id>')
+@app.route('/api/audit_log/<audit_log_id>', methods=['GET'])
 @login_required
 def get_audit_log_details(audit_log_id):
     participant = StudyParticipant.query.filter_by(email=current_user.email).first()
@@ -6101,7 +6227,7 @@ def close_account(user_id_to_delete):
                 if success:
                     deleted_study_names.append(study_name)
                 else:
-                    raise Exception(f"Failed to delete orphaned study {study_id}")
+                    raise RuntimeError(f"Failed to delete orphaned study {study_id}")
 
         StudyParticipantLink.query.filter_by(participant_id=participant_id_str).delete(synchronize_session=False)
         db.session.delete(participant_to_delete)
@@ -6131,7 +6257,7 @@ def calculate_financial_summary(study_id):
     total_expenses = sum(t.amount for t in transactions if t.transaction_type == 'EXPENSE')
     remaining_balance = total_budget - total_expenses
     forecast_date_str = None
-    today_date = datetime.utcnow().date()
+    today_date = datetime.now(timezone.utc).date()
     if transactions and total_expenses > 0:
         first_transaction_date = min(t.transaction_date for t in transactions)
         days_elapsed = (today_date - first_transaction_date).days
@@ -6151,7 +6277,7 @@ def calculate_financial_summary(study_id):
     }
 
 
-@app.route('/study_dashboard/<study_id>')
+@app.route('/study_dashboard/<study_id>', methods=['GET'])
 @login_required
 def study_dashboard(study_id):
     study = Study.query.get_or_404(study_id)
@@ -6177,7 +6303,7 @@ def study_dashboard(study_id):
     burn_rate_df = pd.DataFrame([{
         'date': t.transaction_date,
         'expense': float(t.amount) if t.transaction_type == 'EXPENSE' else 0.0,
-        'budget': float(t.amount) if t.transaction_type in ['BUGET', 'TOPUP'] else 0.0
+        'budget': float(t.amount) if t.transaction_type in ['BUDGET', 'TOPUP'] else 0.0
         } for t in financials['transactions']])
 
     if not burn_rate_df.empty:
@@ -6397,7 +6523,7 @@ def study_dashboard(study_id):
         app.logger.warning("Recording schedule DataFrame was empty. Skipping heatmap generation.")
 
     flagged_subjects = []
-    inactivity_threshold = datetime.utcnow() - timedelta(days=30)
+    inactivity_threshold = datetime.now(timezone.utc) - timedelta(days=30)
     withdrawn = Subject.query.filter(Subject.study_id == study_id, Subject.withdrawal_date != None).all()
     for s in withdrawn:
         flagged_subjects.append({
@@ -6758,7 +6884,7 @@ def download_multimodal_packet(study_id):
 
         zf.close()
         memory_file.seek(0)
-        filename_date = datetime.utcnow().strftime('%Y-%m-%d')
+        filename_date = datetime.now(timezone.utc).strftime('%Y-%m-%d')
         return send_file(
             memory_file,
             mimetype='application/zip',
@@ -6793,12 +6919,14 @@ def get_knowledge_files(study_id):
         return jsonify(files_list)
     except Exception as e:
         app.logger.error(f"Error fetching knowledge files for study {study_id}: {e}")
+        return jsonify({'error': 'Failed to retrieve knowledge files.'}), 500
 
 
 @app.route('/api/study/<study_id>/knowledge_upload', methods=['POST'])
 @login_required
 def upload_knowledge_files(study_id):
     """Handles PDF file uploads for the knowledge base."""
+    _require_study_membership(study_id)
     if 'files' not in request.files:
         return jsonify({'message': 'No file part in request.'}), 400
     
@@ -6865,7 +6993,7 @@ def get_embedding_client(study_id):
         api_key = study_settings.ai_api_key
         app.logger.info(f"Attempting to initialize OpenAI client for study {study_id}...")
         client = OpenAIEmbeddings(api_key=api_key, model="text-embedding-3-small")
-        app.logger.info(f"OpenAI client initialized successfully.")
+        app.logger.info("OpenAI client initialized successfully.")
         return client
 
     except Exception as e:
@@ -6881,6 +7009,7 @@ def build_knowledge_vectors(study_id):
     Only processes files that do not currently have vectors.
     Commits after each successful file.
     """
+    _require_study_membership(study_id)
     app.logger.info(f"Incremental knowledge build route HIT for study {study_id}.")
     study = Study.query.get_or_404(study_id)
     study_settings = study.settings
@@ -6959,7 +7088,7 @@ def build_knowledge_vectors(study_id):
                     knowledge_id=file_obj.knowledge_id,
                     chunk_index=i,
                     text_content_preview=chunk_text,
-                    vector_data=pickle.dumps(vector)
+                    vector_data=json.dumps(vector).encode('utf-8')
                 )
                 db.session.add(new_vector_entry)
                 total_chunks += 1
@@ -6997,8 +7126,16 @@ def _get_rag_context(study_id, query_text, max_context_items=10, min_similarity=
             app.logger.info("No knowledge vectors found for RAG.")
             return ""
 
-        db_texts = [c.text_content_preview for c in chunks]
-        db_vectors = [pickle.loads(c.vector_data) for c in chunks]
+        db_texts = []
+        db_vectors = []
+        for c in chunks:
+            try:
+                raw = bytes(c.vector_data) if not isinstance(c.vector_data, bytes) else c.vector_data
+                db_vectors.append(json.loads(raw.decode('utf-8')))
+                db_texts.append(c.text_content_preview)
+            except Exception:
+                app.logger.warning("Skipping knowledge vector with unreadable encoding; rebuild required.")
+                continue
         
         embeddings_client = get_embedding_client(study_id)
         if not embeddings_client:
@@ -7034,7 +7171,7 @@ def _get_rag_context(study_id, query_text, max_context_items=10, min_similarity=
         return ""
 
 
-@app.route('/api/meddra/search')
+@app.route('/api/meddra/search', methods=['GET'])
 @login_required
 def meddra_search():
     """
@@ -7077,13 +7214,21 @@ def research_query():
 
     try:
         api_key = None
-        
-        # First, try study settings
-        study_settings = StudySettings.query.filter(StudySettings.ai_api_key != None).first()
-        if study_settings and study_settings.ai_api_key:
-            api_key = study_settings.ai_api_key
-        
-        # Fallback to current user's API key
+
+        # First, try API keys from studies the current user belongs to
+        participant = StudyParticipant.query.filter_by(email=current_user.email).first()
+        if participant:
+            user_study_ids = db.session.query(StudyParticipantLink.study_id).filter_by(
+                participant_id=str(participant.participant_id).lower()
+            ).subquery()
+            study_settings = StudySettings.query.filter(
+                StudySettings.study_id.in_(user_study_ids),
+                StudySettings.ai_api_key != None,
+            ).first()
+            if study_settings:
+                api_key = study_settings.ai_api_key
+
+        # Fallback to current user's personal API key
         if not api_key and current_user.ai_api_key:
             api_key = current_user.ai_api_key
 
@@ -7224,7 +7369,7 @@ def research_query():
                 tools="hover"
             )
 
-            x_vals = np.random.normal(0.5, 0.05, len(df_clean))
+            x_vals = _rng.normal(0.5, 0.05, len(df_clean))
             p.circle(x_vals, df_clean['enrollment'], size=8, color="#20519c", alpha=0.6)
 
             p.xaxis.visible = False
@@ -7254,7 +7399,7 @@ def research_query():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/visualize_image/<recording_id>')
+@app.route('/visualize_image/<recording_id>', methods=['GET'])
 @login_required
 def visualize_image(recording_id):
     """
@@ -7295,6 +7440,22 @@ def visualize_image(recording_id):
         image_data=img_data,
         image_type=image_type
     )
+
+
+@app.errorhandler(403)
+def forbidden(e):
+    if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+        return jsonify({'error': 'Forbidden', 'message': 'You do not have permission to access this resource.'}), 403
+    flash('You do not have permission to access that resource.', 'danger')
+    return redirect(url_for('main_app')), 403
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    db.session.rollback()
+    if request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html:
+        return jsonify({'error': 'Internal Server Error', 'message': 'An unexpected error occurred.'}), 500
+    return render_template('base.html'), 500
 
 
 if __name__ == '__main__':

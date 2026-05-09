@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Login - Novasyne{% endblock %}
+
+{% block content %}
+<style>
+    .auth-wrapper {
+        max-width: 440px;
+        margin: 3rem auto;
+    }
+
+    .auth-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-xl);
+        box-shadow: var(--shadow-lg);
+        overflow: hidden;
+    }
+
+    .auth-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        padding: 2rem;
+        text-align: center;
+    }
+
+    .auth-header .header-icon {
+        width: 56px;
+        height: 56px;
+        background: rgba(255,255,255,0.15);
+        border-radius: var(--radius-lg);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 1rem;
+        backdrop-filter: blur(8px);
+    }
+
+    .auth-header .header-icon i {
+        font-size: 1.75rem;
+        color: var(--text-inverse);
+    }
+
+    .auth-header h2 {
+        color: var(--text-inverse);
+        font-size: 1.375rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    .auth-header p {
+        color: rgba(255,255,255,0.8);
+        font-size: 0.8125rem;
+        margin: 0.5rem 0 0;
+    }
+
+    .auth-body {
+        padding: 2rem;
+    }
+
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .form-group:last-of-type {
+        margin-bottom: 1.75rem;
+    }
+
+    .auth-body .form-control {
+        padding: 0.75rem 1rem;
+        font-size: 0.9375rem;
+    }
+
+    .btn-auth {
+        width: 100%;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.9375rem;
+    }
+
+    .auth-footer {
+        text-align: center;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--border);
+        margin-top: 1.5rem;
+    }
+
+    .auth-footer p {
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--text-secondary);
+    }
+
+    .auth-footer a {
+        color: var(--primary);
+        font-weight: 600;
+        text-decoration: none;
+        transition: var(--transition-fast);
+    }
+
+    .auth-footer a:hover {
+        color: var(--primary-light);
+        text-decoration: underline;
+    }
+
+    /* Password visibility toggle */
+    .password-wrapper {
+        position: relative;
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .password-toggle:hover {
+        color: var(--text-secondary);
+    }
+
+    .password-wrapper .form-control {
+        padding-right: 2.5rem;
+    }
+</style>
+
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="header-icon">
+                <i class="bi bi-shield-lock"></i>
+            </div>
+            <h2>Welcome Back</h2>
+            <p>Sign in to your STUDYPRO account</p>
+        </div>
+
+        <div class="auth-body">
+            <form method="POST" action="{{ url_for('login') }}">
+                <div class="form-group">
+                    <label for="email" class="form-label">Email Address</label>
+                    <input type="email" class="form-control" id="email" name="email" 
+                        placeholder="you@example.com" required autofocus>
+                </div>
+
+                <div class="form-group">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="password-wrapper">
+                        <input type="password" class="form-control" id="password" name="password"
+                            placeholder="Enter your password" required autocomplete="current-password">
+                        <button type="button" class="password-toggle" onclick="togglePassword()">
+                            <i class="bi bi-eye" id="toggleIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-auth">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Don't have an account? <a href="{{ url_for('register') }}">Create one</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function togglePassword() {
+    const passwordInput = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('bi-eye');
+        toggleIcon.classList.add('bi-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('bi-eye-slash');
+        toggleIcon.classList.add('bi-eye');
+    }
+}
+</script>
+{% endblock %}

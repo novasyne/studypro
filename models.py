@@ -3,9 +3,7 @@ from datetime import datetime
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy import UniqueConstraint
-import uuid
 from extensions import db, login_manager
 from sqlalchemy import LargeBinary
 from sqlalchemy import event
@@ -51,7 +49,7 @@ class Study(db.Model):
     funding_source = db.Column(db.String(255), nullable=True)
     budget_amount = db.Column(db.Numeric(18, 2), nullable=True)
     currency = db.Column(db.String(10), nullable=True)
-    principal_investigator_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=True)
+    principal_investigator_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=True, index=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -72,12 +70,12 @@ class StudyParticipantLink(db.Model):
     __tablename__ = 'study_participant_link'
     
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    study_id = db.Column(db.String(36), db.ForeignKey('studies.study_id'), nullable=False)
-    participant_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False)
+    study_id = db.Column(db.String(36), db.ForeignKey('studies.study_id'), nullable=False, index=True)
+    participant_id = db.Column(db.String(36), db.ForeignKey('user.id'), nullable=False, index=True)
     start_date = db.Column(db.Date, nullable=True)
     end_date = db.Column(db.Date, nullable=True)
     active = db.Column(db.Boolean, default=True, nullable=True)
-    is_admin = db.Column(db.Boolean, nullable=False, default=False)
+    is_admin = db.Column(db.Boolean, nullable=False, default=False, index=True)
 
     def __repr__(self):
         return f'<StudyParticipantLink {self.participant_id} in {self.study_id}>'
@@ -123,7 +121,7 @@ class StudyArm(db.Model):
     """Represents the actual participant arms for a specific study instance."""
     __tablename__ = 'study_arms'
     arm_id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False)
+    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False, index=True)
     arm_name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(255), nullable=True)
 
@@ -136,9 +134,9 @@ class Subject(db.Model):
     __tablename__ = 'subjects'
     
     subject_id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    external_subject_code = db.Column(db.String(50), nullable=True)
-    study_id = db.Column(db.String(36), db.ForeignKey('studies.study_id'), nullable=True)
-    arm_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('study_arms.arm_id'), nullable=True)
+    external_subject_code = db.Column(db.String(50), nullable=True, index=True)
+    study_id = db.Column(db.String(36), db.ForeignKey('studies.study_id'), nullable=True, index=True)
+    arm_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('study_arms.arm_id'), nullable=True, index=True)
     status = db.Column(db.String(50), nullable=True, default='Screening') # e.g., Screening, Enrolled, Completed, Withdrawn, Screen Fail
     enrollment_date = db.Column(db.Date, nullable=True)
     completion_date = db.Column(db.Date, nullable=True)
@@ -189,7 +187,7 @@ class SubjectClinician(db.Model):
     __tablename__ = 'subject_clinicians'
 
     clinician_id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
     first_name = db.Column(db.String(100), nullable=True)
     last_name = db.Column(db.String(100), nullable=True)
     specialty = db.Column(db.String(100), nullable=True)
@@ -208,7 +206,7 @@ class SubjectConsent(db.Model):
     __tablename__ = 'subject_consent'
 
     consent_id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
     consent_version = db.Column(db.String(50), nullable=True)
     consent_type = db.Column(db.String(50), nullable=True)
     signed_at = db.Column(db.DateTime, nullable=True)
@@ -223,7 +221,7 @@ class SubjectContact(db.Model):
     __tablename__ = 'subject_contacts'
 
     contact_id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
     contact_type = db.Column(db.String(20), nullable=True)
     contact_value = db.Column(db.String(255), nullable=True)
     preferred = db.Column(db.Boolean, nullable=True)
@@ -238,7 +236,7 @@ class SubjectDiagnosis(db.Model):
     __tablename__ = 'subject_diagnoses'
 
     id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
     diagnosis_code = db.Column(db.String(20), nullable=True)
     diagnosis_description = db.Column(db.String(255), nullable=True)
     diagnosis_date = db.Column(db.Date, nullable=True)
@@ -254,7 +252,7 @@ class SubjectMedication(db.Model):
     __tablename__ = 'subject_medications'
 
     id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
     medication_name = db.Column(db.String(150), nullable=False)
     dose = db.Column(db.String(100), nullable=True)
     route = db.Column(db.String(50), nullable=True)
@@ -272,11 +270,11 @@ class StudyDocument(db.Model):
     __tablename__ = 'study_documents'
     
     document_id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
-    study_id = db.Column(db.String(36), db.ForeignKey('studies.study_id'), nullable=False)
+    study_id = db.Column(db.String(36), db.ForeignKey('studies.study_id'), nullable=False, index=True)
     filename = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=True)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    data = db.Column(LargeBinary, nullable=False) # Stores the file content
+    data = db.Column(LargeBinary, nullable=False)
 
     def __repr__(self):
         return f'<StudyDocument {self.filename}>'
@@ -287,7 +285,7 @@ class SubjectDocument(db.Model):
     __tablename__ = 'subject_documents'
     
     document_id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
     filename = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=True)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
@@ -302,8 +300,8 @@ class StudyRecording(db.Model):
     __tablename__ = 'study_recordings'
 
     recording_id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
+    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False, index=True)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
     recording_datetime = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     recording_type = db.Column(db.String(10), nullable=False) # e.g., 'Biomarker', 'EEG', 'Wearable', 'Symptom', 'Medication', 'Adverse Event'
 
@@ -339,9 +337,9 @@ class StudyRecordingBiomarker(db.Model):
     __tablename__ = 'study_recordings_biomarker'
 
     recording_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('study_recordings.recording_id'), primary_key=True)
-    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
-    biomarker_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('biomarker_types.biomarker_id'), nullable=False)
+    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False, index=True)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
+    biomarker_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('biomarker_types.biomarker_id'), nullable=False, index=True)
     biomarker_value = db.Column(db.Numeric(18, 5), nullable=False)
 
     biomarker_type = db.relationship('BiomarkerType')
@@ -379,8 +377,8 @@ class StudyRecordingEEG(db.Model):
     __tablename__ = 'study_recordings_eeg'
 
     recording_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('study_recordings.recording_id'), primary_key=True)
-    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
+    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False, index=True)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
     data_uri = db.Column(db.String(250), nullable=False)
     eeg_id = db.Column(db.Integer, db.ForeignKey('eeg.eeg_id'), nullable=True)
 
@@ -395,8 +393,8 @@ class StudyRecordingWearable(db.Model):
     __tablename__ = 'study_recordings_wearable'
 
     recording_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('study_recordings.recording_id'), primary_key=True)
-    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
+    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False, index=True)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
     data_uri = db.Column(db.String(250), nullable=False)
     wearable_id = db.Column(db.Integer, db.ForeignKey('wearables.wearable_id'), nullable=True)
 
@@ -411,8 +409,8 @@ class StudyRecordingImage(db.Model):
     __tablename__ = 'study_recordings_image'
 
     recording_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('study_recordings.recording_id'), primary_key=True)
-    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
+    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False, index=True)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
     data_uri = db.Column(db.String(250), nullable=False)
     image_type = db.Column(db.String(50), nullable=False)
 
@@ -437,7 +435,7 @@ class FinancialLedger(db.Model):
     __tablename__ = 'financial_ledger'
 
     transaction_id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False)
+    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False, index=True)
     transaction_date = db.Column(db.Date, nullable=False)
     transaction_type = db.Column(db.String(20), nullable=False)  # 'BUDGET', 'TOPUP', 'EXPENSE'
     amount = db.Column(db.Numeric(18, 2), nullable=False)
@@ -492,7 +490,7 @@ class StudyKnowledge(db.Model):
     __tablename__ = 'studies_knowledge'
 
     knowledge_id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id', ondelete='CASCADE'), nullable=False)
+    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id', ondelete='CASCADE'), nullable=False, index=True)
     filename = db.Column(db.String(255), nullable=False)
     upload_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     data = db.Column(LargeBinary, nullable=False) # Stores the PDF file content
@@ -508,14 +506,14 @@ class StudyKnowledgeVector(db.Model):
     __tablename__ = 'studies_knowledge_vector'
 
     vector_id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    knowledge_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies_knowledge.knowledge_id', ondelete='CASCADE'), nullable=False)
+    knowledge_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies_knowledge.knowledge_id', ondelete='CASCADE'), nullable=False, index=True)
     chunk_index = db.Column(db.Integer, nullable=False)
     text_content_preview = db.Column(db.Text, nullable=True)
     vector_data = db.Column(LargeBinary, nullable=False)
 
     __table_args__ = (UniqueConstraint('knowledge_id', 'chunk_index', name='_knowledge_chunk_uc'),)
 
-    def __repr__(selfD):
+    def __repr__(self):
         return f'<StudyKnowledgeVector Chunk {self.chunk_index} for File {self.knowledge_id}>'
 
 
@@ -524,10 +522,10 @@ class AuditLog(db.Model):
     __tablename__ = 'audit_log'
     
     audit_log_id = db.Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid.uuid4)
-    change_datetime = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    user_email = db.Column(db.String(120), nullable=False)
-    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=True)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=True)
+    change_datetime = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    user_email = db.Column(db.String(120), nullable=False, index=True)
+    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=True, index=True)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=True, index=True)
     record_id = db.Column(UNIQUEIDENTIFIER, nullable=False)
     changed_table = db.Column(db.String(128), nullable=False)
     change_type = db.Column(db.String(50), nullable=False) # 'Wearable', 'EEG', 'Biomarker'
@@ -562,9 +560,9 @@ class SubjectSymptom(db.Model):
     __tablename__ = 'subject_symptoms'
     
     recording_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('study_recordings.recording_id'), primary_key=True)
-    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
-    
+    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False, index=True)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
+
     symptom_verbatim = db.Column(db.Text, nullable=True)
     meddra_code = db.Column(db.String(20), db.ForeignKey('meddra_dictionary.meddra_code'), nullable=True)
     meddra_term = db.Column(db.String(255), nullable=True)
@@ -581,9 +579,9 @@ class SubjectAdverseEvent(db.Model):
     __tablename__ = 'subject_adverse_events'
     
     recording_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('study_recordings.recording_id'), primary_key=True)
-    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
-    
+    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False, index=True)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
+
     ae_verbatim = db.Column(db.Text, nullable=True) # Clinician's description
     meddra_code = db.Column(db.String(20), db.ForeignKey('meddra_dictionary.meddra_code'), nullable=True)
     meddra_term = db.Column(db.String(255), nullable=True) # The selected MedDRA term
@@ -604,8 +602,8 @@ class SubjectMedicationTaken(db.Model):
     __tablename__ = 'subject_medications_taken'
     
     recording_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('study_recordings.recording_id'), primary_key=True)
-    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False)
-    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False)
+    study_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('studies.study_id'), nullable=False, index=True)
+    subject_id = db.Column(UNIQUEIDENTIFIER, db.ForeignKey('subjects.subject_id'), nullable=False, index=True)
 
     medication_name = db.Column(db.String(255), nullable=False)
     dose = db.Column(db.String(100), nullable=True)

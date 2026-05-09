@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+
+{% block title %}Create Study: Step 3{% endblock %}
+
+{% block content %}
+
+<body data-page-name="create_study_step1">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Create a New Study - Step 3 of 3: Details & Participants</h2>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" id="main-form" action="{{ url_for('create_study_step3') }}">
+                            <input type="hidden" name="temp_id" id="temp_id_to_remove">
+
+                            <h5 class="card-subtitle mb-3 text-muted">Study Details</h5>
+                            <div class="mb-3">
+                                <label for="study_name" class="form-label">Study Name <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" class="form-control" name="study_name"
+                                    value="{{ study_details.get('name', '') }}" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="study_description" class="form-label">Study Description <span
+                                        class="text-danger">*</span></label>
+                                <textarea class="form-control" name="study_description" rows="3"
+                                    required>{{ study_details.get('description', '') }}</textarea>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="start_date" class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" name="start_date"
+                                        value="{{ study_details.get('start_date', '') }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="end_date" class="form-label">End Date</label>
+                                    <input type="date" class="form-control" name="end_date"
+                                        value="{{ study_details.get('end_date', '') }}">
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h5 class="card-subtitle mb-3 text-muted">Add Participants</h5>
+                            <p>Add the researchers involved in this study. You must have at least one participant, and
+                                one must be designated as the "Primary Investigator".</p>
+
+                            <table class="table align-middle">
+                                <thead>
+                                    <tr style="cursor:pointer">
+                                        <th><span aria-hidden="true">&#8597;</span> First Name</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Last Name</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Email</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Phone</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Role</th>
+                                        <th class="text-center" style="width: 180px;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if not participants_data %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">No participants added yet.</td>
+                                    </tr>
+                                    {% endif %}
+                                    {% for p in participants_data %}
+                                    <tr>
+                                        <td>{{ p.first_name }}</td>
+                                        <td>{{ p.last_name }}</td>
+                                        <td>{{ p.email }}</td>
+                                        <td>{{ p.phone }}</td>
+                                        <td>{{ p.role }}</td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-secondary edit-btn"
+                                                    data-bs-toggle="modal" data-bs-target="#participantModal"
+                                                    data-participant='{{ p|tojson|safe }}'>
+                                                    Edit
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-danger ms-2"
+                                                    data-bs-toggle="modal" data-bs-target="#removeConfirmationModal"
+                                                    data-temp-id="{{ p.temp_id }}">
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <br/>
+                            <div class="d-flex justify-content-end mb-3">
+                                <button type="button" class="btn btn-primary" id="add-participant-btn"
+                                    data-bs-toggle="modal" data-bs-target="#participantModal">
+                                    <i class="bi bi-plus-square button-icon me-1"></i>Add Participant
+                                </button>
+                            </div>
+
+                            <hr class="mt-4">
+
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('create_study_step2') }}" class="btn btn-secondary"><i
+                                        class="bi bi-skip-backward button-icon me-1"></i>Previous</a>
+                                <div>
+                                    <button type="submit" name="action" value="save_study"
+                                        class="btn btn-primary me-2"><i
+                                            class="bi bi-plus-square button-icon me-1"></i>Save Study</button>
+                                    <a href="{{ url_for('main_app') }}" class="btn btn-secondary"><i
+                                            class="bi bi-x-circle button-icon me-1"></i>Cancel</a>
+
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="participantModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form method="POST" id="modal-form" action="{{ url_for('create_study_step3') }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalTitle">Add New Participant</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="action" value="save_participant">
+                        <input type="hidden" name="temp_id" id="temp_id">
+                        <input type="hidden" name="study_name" id="modal_study_name">
+                        <input type="hidden" name="study_description" id="modal_study_description">
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label for="first_name" class="form-label">First Name <span
+                                        class="text-danger">*</span></label><input type="text" class="form-control"
+                                    name="first_name" required></div>
+                            <div class="col-md-6 mb-3"><label for="last_name" class="form-label">Last Name <span
+                                        class="text-danger">*</span></label><input type="text" class="form-control"
+                                    name="last_name" required></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label for="email" class="form-label">Email <span
+                                        class="text-danger">*</span></label><input type="email" class="form-control"
+                                    name="email" required></div>
+                            <div class="col-md-6 mb-3"><label for="phone" class="form-label">Phone</label><input
+                                    type="text" class="form-control" name="phone"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="role" class="form-label">Role <span class="text-danger">*</span></label>
+                            <select class="form-select" name="role" required>
+                                <option value="" disabled selected>Select a role...</option>
+                                <option value="Principal Investigator">Principal Investigator</option>
+                                <option value="Co-Investigator">Co-Investigator</option>
+                                <option value="Sub-Investigator">Sub-Investigator</option>
+                                <option value="Lead Investigator">Lead Investigator</option>
+                                <option value="Medical Monitor">Medical Monitor</option>
+                                <option value="Scientific Advisor">Scientific Advisor</option>
+                                <option value="Biostatistician">Biostatistician</option>
+                                <option value="Epidemiologist">Epidemiologist</option>
+                                <option value="Clinical Research Coordinator">Clinical Research Coordinator</option>
+                                <option value="Project Manager">Project Manager</option>
+                                <option value="Clinical Trial Manager">Clinical Trial Manager</option>
+                                <option value="Data Manager">Data Manager</option>
+                                <option value="Regulatory Affairs Specialist">Regulatory Affairs Specialist</option>
+                                <option value="Clinical Research Associate">Clinical Research Associate</option>
+                                <option value="Research Assistant">Research Assistant</option>
+                                <option value="Protocol Developer">Protocol Developer</option>
+                                <option value="Laboratory Technician">Laboratory Technician</option>
+                                <option value="Pharmacokineticist">Pharmacokineticist</option>
+                                <option value="Pharmacologist">Pharmacologist</option>
+                                <option value="Imaging Specialist">Imaging Specialist</option>
+                                <option value="Data Programmer">Data Programmer</option>
+                                <option value="Study Nurse">Study Nurse</option>
+                                <option value="Informed Consent Specialist">Informed Consent Specialist</option>
+                                <option value="Enrollment Specialist">Enrollment Specialist</option>
+                                <option value="Ethics Committee Member">Ethics Committee Member</option>
+                                <option value="Data Safety Monitoring Board Member">Data Safety Monitoring Board Member
+                                </option>
+                                <option value="Sponsor">Sponsor</option>
+                                <option value="Contract Research Organization">Contract Research Organization</option>
+                                <option value="Regulatory Monitor">Regulatory Monitor</option>
+                                <option value="Quality Assurance Specialist">Quality Assurance Specialist</option>
+                                <option value="AI Specialist">AI Specialist</option>
+                                <option value="Data Scientist">Data Scientist</option>
+                                <option value="Clinical Data Analyst">Clinical Data Analyst</option>
+                                <option value="Medical Writer">Medical Writer</option>
+                                <option value="Publication Coordinator">Publication Coordinator</option>
+                                <option value="Trial Master File Administrator">Trial Master File Administrator</option>
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label for="affiliation"
+                                    class="form-label">Affiliation</label><input type="text" class="form-control"
+                                    name="affiliation"></div>
+                            <div class="col-md-6 mb-3"><label for="department"
+                                    class="form-label">Department</label><input type="text" class="form-control"
+                                    name="department"></div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label for="orcid" class="form-label">ORCID</label><input
+                                    type="text" class="form-control" name="orcid"></div>
+                            <div class="col-md-6 mb-3"><label for="country" class="form-label">Country</label><input
+                                    type="text" class="form-control" name="country"></div>
+                        </div>
+                        <div class="mb-3"><label for="funding_role" class="form-label">Funding Role</label><input
+                                type="text" class="form-control" name="funding_role"></div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3"><label for="percent_effort" class="form-label">Percent Effort
+                                    (%)</label><input type="number" class="form-control" name="percent_effort"
+                                    step="0.01"></div>
+                            <div class="col-md-6 mb-3"><label for="salary_contribution" class="form-label">Salary
+                                    Contribution ($)</label><input type="number" class="form-control"
+                                    name="salary_contribution" step="0.01"></div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary"><i
+                                class="bi bi-plus-square button-icon me-1"></i>Save Participant</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                                class="bi bi-x-circle button-icon me-1"></i>Close</button>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remove Participant Confirmation Modal -->
+    <div class="modal fade" id="removeConfirmationModal" tabindex="-1" aria-labelledby="removeModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="removeModalLabel">Confirm Participant Removal</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to remove this participant from the study?</p>
+                    <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="confirmRemoveBtn">
+                        <i class="bi bi-check button-icon me-1"></i>Yes
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle button-icon me-1"></i>Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    const participantModal = document.getElementById('participantModal');
+    if (participantModal) {
+        const modalForm = document.getElementById('modal-form');
+        const modalTitle = document.getElementById('modalTitle');
+
+        participantModal.addEventListener('show.bs.modal', function (event) {
+            document.getElementById('modal_study_name').value = document.querySelector('[name="study_name"]').value;
+            document.getElementById('modal_study_description').value = document.querySelector('[name="study_description"]').value;
+
+            const button = event.relatedTarget;
+            const participantData = button.getAttribute('data-participant');
+
+            if (participantData) {
+                modalTitle.textContent = 'Edit Participant';
+                modalForm.reset();
+                const participant = JSON.parse(participantData);
+                modalForm.querySelector('#temp_id').value = participant.temp_id || '';
+                for (const key in participant) {
+                    const input = modalForm.querySelector(`[name="${key}"]`);
+                    if (input) {
+                        input.value = participant[key] || '';
+                    }
+                }
+            } else {
+                modalTitle.textContent = 'Add New Participant';
+                modalForm.reset();
+                modalForm.querySelector('#temp_id').value = '';
+            }
+        });
+    }
+
+    // Handle remove participant confirmation modal
+    const removeConfirmationModal = document.getElementById('removeConfirmationModal');
+    if (removeConfirmationModal) {
+        let tempIdToRemove = '';
+        
+        removeConfirmationModal.addEventListener('show.bs.modal', function (event) {
+            const button = event.relatedTarget;
+            tempIdToRemove = button.getAttribute('data-temp-id');
+        });
+
+        document.getElementById('confirmRemoveBtn').addEventListener('click', function () {
+            document.getElementById('temp_id_to_remove').value = tempIdToRemove;
+            const mainForm = document.getElementById('main-form');
+            
+            // Create a hidden input for the action
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = 'remove_participant';
+            mainForm.appendChild(actionInput);
+            
+            // Submit the form
+            mainForm.submit();
+        });
+    }
+</script>
+{% endblock %}

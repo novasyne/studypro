@@ -1,0 +1,1680 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Subjects{% endblock %}
+
+{% block head %}
+{{ super() }}
+
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
+<style>
+    .dataTables_wrapper .dataTables_length select {
+        padding: 0.375rem 2.25rem 0.375rem 0.75rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+        padding: 0.375rem 0.75rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        margin-left: 0.5rem;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
+        background: #20519c !important;
+        border-color: #20519c !important;
+        color: white !important;
+    }
+
+    .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+        background: #0b5ed7 !important;
+        border-color: #0a58ca !important;
+        color: white !important;
+    }
+
+    .btn-group {
+        white-space: normal;
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    #subjectHistoryModal .table {
+        font-size: 0.85rem;
+    }
+
+    #subjectHistoryModal .form-control,
+    #subjectHistoryModal .form-select {
+        font-size: 0.85rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .history-datatable_wrapper .dataTables_length,
+    .history-datatable_wrapper .dataTables_filter,
+    .history-datatable_wrapper .dataTables_info,
+    .history-datatable_wrapper .dataTables_paginate {
+        display: none !important;
+    }
+
+    #subjectHistoryModal .table {
+        width: 100% !important;
+    }
+
+    #subjectHistoryModal .dataTables_wrapper {
+        width: 100%;
+    }
+
+    .toast-container {
+        z-index: 1090;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<body data-page-name="manage_subjects">
+<br/><br/>
+    <div class="toast-container position-fixed top-0 end-0 p-3">
+    </div>
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">{{ study.name }}</h3>
+                    </div>
+                    <div class="card-body">
+
+
+                        <div id="table-loader-container" class="text-center p-5">
+                            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                                <span class="visually-hidden">Loading subjects...</span>
+                            </div>
+                            <h5 class="mt-3">Loading subjects...</h5>
+                        </div>
+
+                        <div class="table-responsive" id="table-container" style="visibility: hidden;">
+                            <table id="subjectsTable" class="table table-hover align-middle">
+                                <thead class="bg-light">
+                                    <tr style="cursor:pointer">
+                                        <th><span aria-hidden="true">&#8597;</span> External Code</th>
+                                        <th><span aria-hidden="true">&#8597;</span> First Name</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Last Name</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Cohort</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Gender</th>
+                                        <th><span aria-hidden="true">&#8597;</span> Study Status</th>
+                                        <th class="text-center">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if not subjects %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">No subjects added yet.</td>
+                                    </tr>
+                                    {% else %}
+                                    {% for subject in subjects %}
+                                    <tr>
+                                        <td>{{ subject.external_subject_code }}</td>
+                                        <td>{{ subject.first_name or '*****' }}</td>
+                                        <td>{{ subject.last_name or '*****' }}</td>
+                                        <td>{{ subject.arm_name or '' }}</td>
+                                        <td>{{ subject.gender or '' }}</td>
+                                        <td>
+                                            {% if subject.status == 'Enrolled' %}
+                                                <span class="badge bg-success">{{ subject.status }}</span>
+                                            {% elif subject.status == 'Screening' %}
+                                                <span class="badge bg-info text-dark">{{ subject.status }}</span>
+                                            {% elif subject.status == 'Withdrawn' %}
+                                                <span class="badge bg-danger">{{ subject.status }}</span>
+                                            {% elif subject.status == 'Completed' %}
+                                                <span class="badge bg-primary">{{ subject.status }}</span>
+                                            {% elif subject.status == 'Screen Fail' %}
+                                                <span class="badge bg-warning text-dark">{{ subject.status }}</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ subject.status or 'N/A' }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-info edit-btn"
+                                                    style="margin-right:5px;" data-bs-toggle="modal"
+                                                    data-bs-target="#subjectModal"
+                                                    data-subject='{{ subject | tojson | safe }}'>
+                                                    <i class="bi bi-pencil-square me-1"></i>Edit
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-info history-btn"
+                                                    style="margin-right:5px;""
+                                                    data-bs-toggle="modal" data-bs-target="#subjectHistoryModal"
+                                                    data-subject-id="{{ subject.subject_id }}"
+                                                    data-subject-name="{{ subject.external_subject_code }}">
+                                                    <i class="bi bi-diagram-3  me-1"></i>History
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-info manage-consent-btn"
+                                                    style="margin-right:5px;""
+                                                    data-bs-toggle="modal" data-bs-target="#consentManagementModal"
+                                                    data-subject-id="{{ subject.subject_id }}"
+                                                    data-subject-name="{{ subject.external_subject_code }}">
+                                                    <i class="bi bi-journal-check  me-1"></i>Consent
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-info manage-docs-btn"
+                                                    data-bs-toggle="modal" data-bs-target="#subjectDocumentsModal"
+                                                    data-subject-id="{{ subject.subject_id }}"
+                                                    data-subject-name="{{ subject.external_subject_code }}">
+                                                    <i class="bi bi-file-earmark-text  me-1"></i> Documents
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <br/>
+                                                <div class="d-flex justify-content-end mb-3">
+                            <button type="button" class="btn btn-primary" data-bs-toggle="modal"
+                                data-bs-target="#subjectModal">
+                                <i class="bi bi-plus-square button-icon me-1"></i>Add Subject
+                            </button>
+                        </div>
+                        <hr class="mt-4">
+
+                        <div class="d-flex justify-content-end">
+                            <a href="{{ url_for('edit_study', study_id=study.study_id) }}" class="btn btn-secondary"><i
+                                    class="bi bi-x-circle button-icon me-1"></i>Close</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="subjectModal" tabindex="-1" aria-labelledby="modalTitle" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <form method="POST" id="modal-form" action="{{ url_for('manage_subjects', study_id=study.study_id) }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalTitle">Add New Subject</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="action" value="save_subject">
+                        <input type="hidden" name="subject_id" id="subject_id">
+
+                        <div class_id="core-info" class="p-3 border rounded mb-3" style="background-color: #f8f9fa;">
+                            <h6 class="mb-3 text-primary">Core Information</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="external_subject_code" class="form-label">External Subject Code <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="external_subject_code" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="status" class="form-label">Subject Status <span
+                                            class="text-danger">*</span></label>
+                                    <select class="form-select" name="status" required>
+                                        <option value="Screening" selected>Screening</option>
+                                        <option value="Enrolled">Enrolled</option>
+                                        <option value="Completed">Completed</option>
+                                        <option value="Withdrawn">Withdrawn</option>
+                                        <option value="Screen Fail">Screen Fail</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="arm_id" class="form-label">Cohort Assignment</label>
+                                    <select class="form-select" id="arm_id" name="arm_id">
+                                        <option value="">-- No Cohort Assigned --</option>
+                                        {% for arm in arms %}
+                                        <option value="{{ arm.arm_id }}">{{ arm.arm_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="site_identifier" class="form-label">Site Identifier</label>
+                                    <input type="text" class="form-control" name="site_identifier"
+                                        placeholder="e.g., SITE-001">
+                                </div>
+                            </div>
+                        </div>
+                        <ul class="nav nav-tabs" id="subjectTab" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="demographics-tab" data-bs-toggle="tab"
+                                    data-bs-target="#demographics" type="button" role="tab" aria-controls="demographics"
+                                    aria-selected="true">Demographics</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="location-tab" data-bs-toggle="tab"
+                                    data-bs-target="#location" type="button" role="tab" aria-controls="location"
+                                    aria-selected="false">Location & Contact</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="background-tab" data-bs-toggle="tab"
+                                    data-bs-target="#background" type="button" role="tab" aria-controls="background"
+                                    aria-selected="false">Background & Vitals</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="lifestyle-tab" data-bs-toggle="tab"
+                                    data-bs-target="#lifestyle" type="button" role="tab" aria-controls="lifestyle"
+                                    aria-selected="false">Lifestyle</button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="studylifecycle-tab" data-bs-toggle="tab"
+                                    data-bs-target="#studylifecycle" type="button" role="tab" aria-controls="studylifecycle"
+                                    aria-selected="false">Study Lifecycle</button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content pt-3">
+                            <div class="tab-pane fade show active" id="demographics" role="tabpanel"
+                                aria-labelledby="demographics-tab">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3"><label for="first_name" class="form-label">First
+                                            Name</label><input type="text" class="form-control"
+                                            name="first_name"></div>
+                                    <div class="col-md-6 mb-3"><label for="last_name" class="form-label">Last
+                                            Name</label><input type="text" class="form-control"
+                                            name="last_name">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="date_of_birth" class="form-label">Date of Birth</label>
+                                        <input type="date" class="form-control" name="date_of_birth">
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="gender" class="form-label">Gender</label>
+                                        <select class="form-select" name="gender">
+                                            <option value="" selected>Select...</option>
+                                            <option value="Male">Male</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Unspecified">Unspecified</option>
+                                            <option value="Other">Other</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="pregnancy_status" class="form-label">Pregnancy
+                                            Status</label>
+                                        <select class="form-select" name="pregnancy_status">
+                                            <option value="" selected>Select...</option>
+                                            <option value="Not Applicable">Not Applicable</option>
+                                            <option value="Not Pregnant">Not Pregnant</option>
+                                            <option value="Pregnant">Pregnant</option>
+                                            <option value="Unknown">Unknown</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="ethnicity" class="form-label">Ethnicity</label>
+                                        <select class="form-select" name="ethnicity">
+                                            <option value="" selected>Select...</option>
+                                            <option value="African American">African American</option>
+                                            <option value="Asian">Asian</option>
+                                            <option value="Caucasian">Caucasian</option>
+                                            <option value="Hispanic">Hispanic</option>
+                                            <option value="Indigenous / Aboriginal">Indigenous / Aboriginal
+                                            </option>
+                                            <option value="Middle Eastern">Middle Eastern</option>
+                                            <option value="Mixed">Mixed</option>
+                                            <option value="Pacific Islander">Pacific Islander</option>
+                                            <option value="Other">Other</option>
+                                            <option value="Prefer not to say">Prefer not to say</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="race" class="form-label">Race</label>
+                                        <select class="form-select" name="race">
+                                            <option value="" selected>Select...</option>
+                                            <option value="White">White</option>
+                                            <option value="Black or African American">Black or African American
+                                            </option>
+                                            <option value="Asian">Asian</option>
+                                            <option value="American Indian or Alaska Native">American Indian or
+                                                Alaska Native</option>
+                                            <option value="Native Hawaiian or Other Pacific Islander">Native
+                                                Hawaiian or Other Pacific Islander</option>
+                                            <option value="More than one race">More than one race</option>
+                                            <option value="Unknown">Unknown</option>
+                                            <option value="Not Reported">Not Reported</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="handedness" class="form-label">Handedness</label>
+                                        <select class="form-select" name="handedness">
+                                            <option value="" selected>Select...</option>
+                                            <option value="Right">Right</option>
+                                            <option value="Left">Left</option>
+                                            <option value="Ambidextrous">Ambidextrous</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="location" role="tabpanel"
+                                aria-labelledby="location-tab">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3"><label for="city"
+                                            class="form-label">City</label><input type="text"
+                                            class="form-control" name="city"></div>
+                                    <div class="col-md-4 mb-3"><label for="state_province"
+                                            class="form-label">State/Province</label><input type="text"
+                                            class="form-control" name="state_province"></div>
+                                    <div class="col-md-4 mb-3"><label for="postal_code"
+                                            class="form-label">Postal
+                                            Code</label><input type="text" class="form-control"
+                                            name="postal_code">
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="country" class="form-label">Country</label>
+                                        <select class="form-select" name="country">
+                                            <option value="">Select...</option>
+                                            <option value="Australia">Australia</option>
+                                            <option value="Canada">Canada</option>
+                                            <option value="New Zealand">New Zealand</option>
+                                            <option value="United Kingdom">United Kingdom</option>
+                                            <option value="United States">United States</option>
+                                            <option value="">---</option>
+                                            <option value="Afghanistan">Afghanistan</option>
+                                            <option value="Albania">Albania</option>
+                                            <option value="Algeria">Algeria</option>
+                                            <option value="Andorra">Andorra</option>
+                                            <option value="Angola">Angola</option>
+                                            <option value="Argentina">Argentina</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="background" role="tabpanel"
+                                aria-labelledby="background-tab">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="education_level" class="form-label">Education Level</label>
+                                        <select class="form-select" name="education_level">
+                                            <option value="" selected>Select...</option>
+                                            <option value="None">None</option>
+                                            <option value="Primary">Primary</option>
+                                            <option value="High-School">High-School</option>
+                                            <option value="Trade">Trade</option>
+                                            <option value="Certificate">Certificate</option>
+                                            <option value="Diploma">Diploma</option>
+                                            <option value="Bachelors">Bachelors</option>
+                                            <option value="Masters">Masters</option>
+                                            <option value="PhD">PhD</option>
+                                            <option value="Doctorate">Doctorate</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="employment_status" class="form-label">Employment
+                                            Status</label>
+                                        <select class="form-select" name="employment_status">
+                                            <option value="" selected>Select...</option>
+                                            <option value="None">None</option>
+                                            <option value="Full-Time">Full-Time</option>
+                                            <option value="Part-Time">Part-Time</option>
+                                            <option value="Student">Student</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="marital_status" class="form-label">Marital Status</label>
+                                        <select class="form-select" name="marital_status">
+                                            <option value="" selected>Select...</option>
+                                            <option value="Single">Single</option>
+                                            <option value="Partnered">Partnered</option>
+                                            <option value="Married">Married</option>
+                                            <option value="Divorced">Divorced</option>
+                                            <option value="Separated">Separated</option>
+                                            <option value="Unspecified">Unspecified</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3"><label for="height_cm" class="form-label">Height
+                                            (cm)</label><input type="number" step="0.01" class="form-control"
+                                            name="height_cm">
+                                    </div>
+                                    <div class="col-md-4 mb-3"><label for="weight_kg" class="form-label">Weight
+                                            (kg)</label><input type="number" step="0.01" class="form-control"
+                                            name="weight_kg">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="lifestyle" role="tabpanel"
+                                aria-labelledby="lifestyle-tab">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <label for="smoking_status" class="form-label">Smoking Status</label>
+                                        <select class="form-select" name="smoking_status">
+                                            <option value="" selected>Select...</option>
+                                            <option value="Never">Never</option>
+                                            <option value="Quit">Quit</option>
+                                            <option value="Low">Low</option>
+                                            <option value="Moderate">Moderate</option>
+                                            <option value="High">High</option>
+                                            <option value="Other Nicotine">Other Nicotine</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="alcohol_intake" class="form-label">Alcohol Intake</label>
+                                        <select class="form-select" name="alcohol_intake">
+                                            <option value="" selected>Select...</option>
+                                            <option value="Never">Never</option>
+                                            <option value="Low">Low</option>
+                                            <option value="Moderate">Moderate</option>
+                                            <option value="High">High</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4 mb-3">
+                                        <label for="physical_activity_level" class="form-label">Activity
+                                            Level</label>
+                                        <select class="form-select" name="physical_activity_level">
+                                            <option value="" selected>Select...</option>
+                                            <option value="Sedentary">Sedentary</option>
+                                            <option value="Low">Low</option>
+                                            <option value="Moderate">Moderate</option>
+                                            <option value="High">High</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="studylifecycle" role="tabpanel"
+                                aria-labelledby="studylifecycle-tab">
+                                <div class="row">
+                                    <div class="col-md-4 mb-3"><label for="consent_date"
+                                            class="form-label">Initial
+                                            Consent
+                                            Date</label><input type="date" class="form-control"
+                                            name="consent_date">
+                                    </div>
+                                    <div class="col-md-4 mb-3"><label for="completion_date"
+                                            class="form-label">Completion
+                                            Date</label><input type="date" class="form-control"
+                                            name="completion_date">
+                                    </div>
+                                    <div class="col-md-4 mb-3"><label for="withdrawal_date"
+                                            class="form-label">Withdrawal
+                                            Date</label><input type="date" class="form-control"
+                                            name="withdrawal_date"></div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="withdrawal_reason" class="form-label">Withdrawal Reason</label>
+                                    <textarea class="form-control" name="withdrawal_reason" rows="2"
+                                        placeholder="Reason for withdrawal..."></textarea>
+                                </div>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3"><label for="screen_fail_date"
+                                            class="form-label">Screen Fail
+                                            Date</label><input type="date" class="form-control"
+                                            name="screen_fail_date"></div>
+                                    <div class="col-md-8 mb-3">
+                                        <label for="screen_fail_reason" class="form-label">Screen Fail
+                                            Reason</label>
+                                        <input type="text" class="form-control" name="screen_fail_reason"
+                                            placeholder="Reason for screen failure...">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary me-2"><i
+                                class="bi bi-plus-square button-icon me-1"></i>Save Subject</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                                class="bi bi-x-circle button-icon me-1"></i>Close</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="subjectDocumentsModal" tabindex="-1" aria-labelledby="subjectDocumentsModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="subjectDocumentsModalLabel">Subject Documents</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h6 class="mb-3">Attached Documents</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Description</th>
+                                    <th>Uploaded</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="subjectDocumentListBody"></tbody>
+                        </table>
+                    </div>
+                    <hr class="my-4">
+                    <h6><i class="bi bi-upload"></i> Upload New Document</h6>
+                    <form id="subjectUploadDocForm" method="POST" enctype="multipart/form-data"
+                        class="mt-3 p-3 bg-light border rounded">
+                        <div class="mb-3">
+                            <label for="subjectDocDescription" class="form-label">Description <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="subjectDocDescription" name="description"
+                                required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="subjectDocFile" class="form-label">File <span
+                                    class="text-danger">*</span></label>
+                            <input class="form-control" type="file" id="subjectDocFile" name="document" required>
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary"><i
+                                    class="bi bi-file-earmark-arrow-up button-icon me-1"></i>Upload Document</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="consentManagementModal" tabindex="-1" aria-labelledby="consentManagementModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="consentManagementModalLabel">Manage Consent</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6 class="mb-3">Existing Consent Records</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Version</th>
+                                    <th>Type</th>
+                                    <th>Signed At</th>
+                                    <th>Withdrawn At</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="consentTableBody">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h6 id="consentFormTitle">Add New Consent</h6>
+                    <form id="consentForm" class="mt-3 p-3 bg-light border rounded">
+                        <input type="hidden" id="consent_id" name="consent_id">
+                        <input type="hidden" id="subject_id_consent" name="subject_id">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="consent_version" class="form-label">Version</label>
+                                <input type="text" class="form-control" id="consent_version" name="consent_version">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="consent_type" class="form-label">Type</label>
+                                <select class="form-select" id="consent_type" name="consent_type">
+                                    <option value="" selected disabled>-- Select a Type --</option>
+                                    <option value="Data Sharing">Data Sharing</option>
+                                    <option value="General">General</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="signed_at" class="form-label">Signed At</label>
+                                <input type="date" class="form-control" id="signed_at" name="signed_at">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="withdrawn_at" class="form-label">Withdrawn At</label>
+                                <input type="date" class="form-control" id="withdrawn_at" name="withdrawn_at">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="signature_file" class="form-label">Signature File Reference</label>
+                            <input type="text" class="form-control" id="signature_file" name="signature_file"
+                                placeholder="e.g., signature_scan_001.pdf">
+                        </div>
+                        <div class="text-end">
+                            <button type="button" class="btn btn-secondary" id="cancelConsentEditBtn"
+                                style="display: none;"><i class="bi bi-x-circle button-icon me-1"></i>Cancel
+                                Edit</button>
+                            <button type="submit" class="btn btn-primary"><i
+                                    class="bi bi-plus-square button-icon me-1"></i>Add</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="subjectHistoryModal" tabindex="-1" aria-labelledby="subjectHistoryModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="subjectHistoryModalLabel">Subject History</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" id="historyTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="clinicians-tab" data-bs-toggle="tab"
+                                data-bs-target="#clinicians" type="button" role="tab" aria-controls="clinicians"
+                                aria-selected="true">Clinicians</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="diagnoses-tab" data-bs-toggle="tab" data-bs-target="#diagnoses"
+                                type="button" role="tab" aria-controls="diagnoses"
+                                aria-selected="false">Diagnoses</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="medications-tab" data-bs-toggle="tab"
+                                data-bs-target="#medications" type="button" role="tab" aria-controls="medications"
+                                aria-selected="false">Medication</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="contacts-tab" data-bs-toggle="tab" data-bs-target="#contacts"
+                                type="button" role="tab" aria-controls="contacts"
+                                aria-selected="false">Contacts</button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content pt-3">
+                        <div class="tab-pane fade show active" id="clinicians" role="tabpanel"
+                            aria-labelledby="clinicians-tab">
+                            
+                            <div class="d-flex justify-content-end mb-2">
+                                <button class="btn btn-sm btn-primary" id="addClinicianBtn"><i
+                                        class="bi bi-plus-square button-icon me-1"></i>Add</button>
+                            </div>
+                            <div class="table-responsive history-datatable_wrapper">
+                                <table id="cliniciansTable" class="table table-bordered table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>First Name</th>
+                                            <th>Last Name</th>
+                                            <th>Specialty</th>
+                                            <th>Organization</th>
+                                            <th>Country</th>
+                                            <th>Phone</th>
+                                            <th>Email</th>
+                                            <th class="text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="cliniciansTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="diagnoses" role="tabpanel" aria-labelledby="diagnoses-tab">
+                            <div class="d-flex justify-content-end mb-2">
+                                <button class="btn btn-sm btn-primary" id="addDiagnosisBtn"><i
+                                        class="bi bi-plus-square button-icon me-1"></i>Add</button>
+                            </div>
+                            <div class="table-responsive history-datatable_wrapper">
+                                <table id="diagnosesTable" class="table table-bordered table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Code</th>
+                                            <th>Description</th>
+                                            <th>Status</th>
+                                            <th>Primary</th>
+                                            <th class="text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="diagnosesTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="medications" role="tabpanel" aria-labelledby="medications-tab">
+                            <div class="d-flex justify-content-end mb-2">
+                                <button class="btn btn-sm btn-primary" id="addMedicationBtn"><i
+                                        class="bi bi-plus-square button-icon me-1"></i>Add</button>
+                            </div>
+                            <div class="table-responsive history-datatable_wrapper">
+                                <table id="medicationsTable" class="table table-bordered table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Dose</th>
+                                            <th>Indication</th>
+                                            <th>Start</th>
+                                            <th>End</th>
+                                            <th>Current</th>
+                                            <th class="text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="medicationsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="contacts" role="tabpanel" aria-labelledby="contacts-tab">
+                            <div class="d-flex justify-content-end mb-2">
+                                <button class="btn btn-sm btn-primary" id="addContactBtn"><i
+                                        class="bi bi-plus-square button-icon me-1"></i>Add</button>
+                            </div>
+                            <div class="table-responsive history-datatable_wrapper">
+                                <table id="contactsTable" class="table table-bordered table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Type</th>
+                                            <th>Value</th>
+                                            <th>Preferred</th>
+                                            <th>Verified</th>
+                                            <th class="text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="contactsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary me-2" id="saveHistoryBtn"><i
+                            class="bi bi-plus-square button-icon me-1"></i>Save Changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Close</button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteDocModal" tabindex="-1" aria-labelledby="confirmDeleteDocModalLabel"
+        aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteDocModalLabel">Confirm Document Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to permanently delete this document?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-danger" id="confirmDeleteDocOkButton"><i
+                            class="bi bi-trash button-icon me-1"></i>OK, Delete</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Cancel</button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="confirmDeleteConsentModal" tabindex="-1"
+        aria-labelledby="confirmDeleteConsentModalLabel" aria-hidden="true" data-bs-backdrop="static"
+        data-bs-keyboard="false">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmDeleteConsentModalLabel">Confirm Consent Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to delete this consent record? This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+
+                    <button type="button" class="btn btn-danger" id="confirmDeleteConsentOkButton"><i
+                            class="bi bi-trash button-icon me-1"></i>OK, Delete</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+
+    jQuery(document).ready(function ($) {
+
+        const toastContainer = document.querySelector('.toast-container');
+
+        function showToast(message, type = 'danger') {
+            const toastId = 'toast-' + Math.random().toString(36).substr(2, 9);
+            const toastHtml = `
+                <div id="${toastId}" class="toast align-items-center text-white bg-${type} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                </div>
+            `;
+
+            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+
+            const toastElement = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastElement, {
+                delay: 5000 // 5 seconds
+            });
+
+            toastElement.addEventListener('hidden.bs.toast', () => {
+                toastElement.remove();
+            });
+
+            toast.show();
+        }
+
+        let cliniciansDataTable = null;
+        let diagnosesDataTable = null;
+        let medicationsDataTable = null;
+        let contactsDataTable = null;
+
+        const countryList = [
+            "Afghanistan", "Albania", "Algeria", "Andorra", "Angola", "Antigua and Barbuda", "Argentina",
+            "Armenia", "Australia", "Austria", "Azerbaijan", "Bahamas", "Bahrain", "Bangladesh", "Barbados",
+            "Belarus", "Belgium", "Belize", "Benin", "Bhutan", "Bolivia", "Bosnia and Herzegovina",
+            "Botswana", "Brazil", "Brunei", "Bulgaria", "Burkina Faso", "Burundi", "Cambodia", "Cameroon",
+            "Canada", "Cape Verde", "Central African Republic", "Chad", "Chile", "China", "Colombia",
+            "Comoros", "Congo", "Costa Rica", "Croatia", "Cuba", "Cyprus", "Czech Republic",
+            "Democratic Republic of the Congo", "Denmark", "Djibouti", "Dominica", "Dominican Republic",
+            "East Timor", "Ecuador", "Egypt", "El Salvador", "Equatorial Guinea", "Eritrea", "Estonia",
+            "Ethiopia", "Fiji", "Finland", "France", "Gabon", "Gambia", "Georgia", "Germany", "Ghana",
+            "Greece", "Grenada", "Guatemala", "Guinea", "Guinea-Bissau", "Guyana", "Haiti", "Honduras",
+            "Hungary", "Iceland", "India", "Indonesia", "Iran", "Iraq", "Ireland", "Israel", "Italy",
+            "Ivory Coast", "Jamaica", "Japan", "Jordan", "Kazakhstan", "Kenya", "Kiribati", "Kosovo",
+            "Kuwait", "Kyrgyzstan", "Laos", "Latvia", "Lebanon", "Lesotho", "Liberia", "Libya",
+            "Liechtenstein", "Lithuania", "Luxembourg", "Macedonia", "Madagascar", "Malawi", "Malaysia",
+            "Maldives", "Mali", "Malta", "Marshall Islands", "Mauritania", "Mauritius", "Mexico",
+            "Micronesia", "Moldova", "Monaco", "Mongolia", "Montenegro", "Morocco", "Mozambique", "Myanmar",
+            "Namibia", "Nauru", "Nepal", "Netherlands", "New Zealand", "Nicaragua", "Niger", "Nigeria",
+            "North Korea", "Norway", "Oman", "Pakistan", "Palau", "Palestine", "Panama", "Papua New Guinea",
+            "Paraguay", "Peru", "Philippines", "Poland", "Portugal", "Qatar", "Romania", "Russia", "Rwanda",
+            "Saint Kitts and Nevis", "Saint Lucia", "Saint Vincent and the GrenaDines", "Samoa",
+            "San Marino", "Sao Tome and Principe", "Saudi Arabia", "Senegal", "Serbia", "Seychelles",
+            "Sierra Leone", "Singapore", "Slovakia", "Slovenia", "Solomon Islands", "Somalia",
+            "South Africa", "South Korea", "South Sudan", "Spain", "Sri Lanka", "Sudan", "Suriname",
+            "Swaziland", "Sweden", "Switzerland", "Syria", "Taiwan", "Tajikistan", "Tanzania", "Thailand",
+            "Togo", "Tonga", "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda",
+            "Ukraine", "United Arab Emirates", "United Kingdom", "United States", "Uruguay", "Uzbekistan",
+            "Vanuatu", "Vatican City", "Venezuela", "Vietnam", "Yemen", "Zambia", "Zimbabwe"
+        ];
+
+        {% if subjects %}
+        $('#subjectsTable').DataTable({
+            order: [[0, 'asc']],
+            pageLength: 5,
+            searching: false,
+            info: false,
+            lengthChange: false,
+
+            language: {
+                search: "Search subjects:",
+                lengthMenu: "Show _MENU_ subjects per page",
+                info: "Showing _START_ to _END_ of _TOTAL_ subjects",
+                infoEmpty: "No subjects available",
+                infoFiltered: "(filtered from _MAX_ total subjects)",
+                zeroRecords: "No matching subjects found",
+                paginate: {
+                    first: "First",
+                    last: "Last",
+                    next: "Next",
+                    previous: "Previous"
+                }
+            },
+
+            columnDefs: [
+                {
+                    orderable: false,
+                    targets: 6
+                }
+            ],
+            initComplete: function () {
+                $('#table-loader-container').hide();
+                $('#table-container').css('visibility', 'visible');
+            },
+
+            responsive: true,
+            dom: '<"row mb-3"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>'
+        });
+        {% else %}
+        // If no subjects, manually hide loader and show empty table
+        $('#table-loader-container').hide();
+        $('#table-container').css('visibility', 'visible');
+        {% endif %}
+
+
+        function handleModalCloseCleanup() {
+            const anyModalOpen = document.querySelector('.modal.show');
+
+            if (anyModalOpen) {
+                document.body.classList.add('modal-open');
+            } else {
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => backdrop.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.paddingRight = '';
+                document.body.style.overflow = '';
+            }
+        }
+
+        const subjectModal = document.getElementById('subjectModal');
+        if (subjectModal) {
+            const modalForm = document.getElementById('modal-form');
+            const modalTitle = document.getElementById('modalTitle');
+            const demographicsTab = document.getElementById('demographics-tab');
+
+            subjectModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const subjectData = button.getAttribute('data-subject');
+                modalForm.reset();
+
+                // Reset to first tab (Demographics)
+                if (demographicsTab) {
+                    const tab = new bootstrap.Tab(demographicsTab);
+                    tab.show();
+                }
+
+
+                if (subjectData) {
+                    modalTitle.textContent = 'Edit Subject';
+                    const subject = JSON.parse(subjectData);
+                    for (const key in subject) {
+                        const input = modalForm.querySelector(`[name="${key}"]`);
+                        if (input) {
+                            const dateFields = ['date_of_birth', 'consent_date', 'withdrawal_date', 'enrollment_date', 'completion_date', 'screen_fail_date'];
+                            if (dateFields.includes(key) && subject[key]) {
+                                input.value = subject[key].split('T')[0];
+                            } else {
+                                input.value = subject[key] || '';
+                            }
+                        }
+                    }
+                    modalForm.querySelector('[name="arm_id"]').value = subject.arm_id || '';
+                } else {
+                    modalTitle.textContent = 'Add New Subject';
+                    modalForm.querySelector('#subject_id').value = '';
+                    modalForm.querySelector('[name="arm_id"]').value = '';
+                    modalForm.querySelector('[name="status"]').value = 'Screening';
+                }
+            });
+
+            subjectModal.addEventListener('hidden.bs.modal', handleModalCloseCleanup);
+        }
+
+        const documentsModal = document.getElementById('subjectDocumentsModal');
+        const confirmDeleteDocModalEl = document.getElementById('confirmDeleteDocModal');
+        const confirmDeleteDocModal = new bootstrap.Modal(confirmDeleteDocModalEl);
+        const confirmDeleteDocOkButton = document.getElementById('confirmDeleteDocOkButton');
+        let docDeleteBtnRef = null;
+
+        if (documentsModal) {
+            const uploadForm = documentsModal.querySelector('#subjectUploadDocForm');
+            const documentListBody = documentsModal.querySelector('#subjectDocumentListBody');
+            let currentSubjectIdForDocs = null;
+
+            function refreshDocumentList(subjectId) {
+                documentListBody.innerHTML = '<tr><td colspan="4" class="text-center"><em>Loading...</em></td></tr>';
+                fetch(`/subject/${subjectId}/documents`)
+                    .then(response => response.json())
+                    .then(data => {
+                        documentListBody.innerHTML = '';
+                        if (data.length === 0) {
+                            documentListBody.innerHTML = '<tr><td colspan="4" class="text-center"><em>No documents attached.</em></td></tr>';
+                        } else {
+                            data.forEach(doc => {
+                                const row = `
+                                <tr id="doc-row-${doc.document_id}">
+                                    <td class="align-middle">${doc.filename}</td>
+                                    <td class="align-middle">${doc.description}</td>
+                                    <td class="align-middle">${doc.upload_date}</td>
+                                    <td class="text-end">
+                                        <a href="${doc.download_url}" class="btn btn-sm btn-success"><i class="bi bi-cloud-download button-icon me-1"></i>Download</a>
+                                        <button type="button" class="btn btn-sm btn-danger delete-doc-btn" 
+                                            data-doc-id="${doc.document_id}" 
+                                            data-delete-url="${doc.delete_url}">
+                                            <i class="bi bi-trash button-icon me-1"></i>Delete
+                                        </button>
+                                    </td>
+                                </tr>`;
+                                documentListBody.insertAdjacentHTML('beforeend', row);
+                            });
+                        }
+                    });
+            }
+            documentsModal.addEventListener('show.bs.modal', event => {
+                const button = event.relatedTarget;
+                currentSubjectIdForDocs = button.getAttribute('data-subject-id');
+                const subjectName = button.getAttribute('data-subject-name');
+                documentsModal.querySelector('.modal-title').textContent = `Documents for Subject: ${subjectName}`;
+                uploadForm.action = `/subject/${currentSubjectIdForDocs}/upload`;
+                refreshDocumentList(currentSubjectIdForDocs);
+            });
+
+            documentsModal.addEventListener('hidden.bs.modal', handleModalCloseCleanup);
+
+            uploadForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                const formData = new FormData(uploadForm);
+                const submitButton = uploadForm.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
+                submitButton.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Uploading...`;
+                fetch(uploadForm.action, { method: 'POST', body: formData })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            uploadForm.reset();
+                            refreshDocumentList(currentSubjectIdForDocs);
+                            showToast('Document uploaded successfully.', 'success');
+                        } else {
+                            showToast('Upload failed: ' + data.message);
+                        }
+                    })
+                    .finally(() => {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = '<i class="bi bi-file-earmark-arrow-up button-icon me-1"></i>Upload Document';
+                    });
+            });
+
+            document.getElementById('subjectDocumentListBody').addEventListener('click', function (event) {
+                const button = event.target.closest('.delete-doc-btn');
+                if (button) {
+                    docDeleteBtnRef = button;
+                    confirmDeleteDocModal.show();
+                }
+            });
+
+            if (confirmDeleteDocOkButton) {
+                confirmDeleteDocOkButton.addEventListener('click', function () {
+                    if (docDeleteBtnRef) {
+                        const deleteBtn = docDeleteBtnRef;
+                        const deleteUrl = deleteBtn.dataset.deleteUrl;
+                        const docId = deleteBtn.dataset.docId;
+
+                        fetch(deleteUrl, { method: 'POST' })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.status === 'success') {
+                                    document.getElementById(`doc-row-${docId}`).remove();
+                                    showToast('Document deleted.', 'success');
+                                } else {
+                                    showToast('Error: ' + data.message);
+                                }
+                            })
+                            .finally(() => {
+                                confirmDeleteDocModal.hide();
+                                docDeleteBtnRef = null;
+                            });
+                    }
+                });
+            }
+
+            if (confirmDeleteDocModalEl) {
+                confirmDeleteDocModalEl.addEventListener('hidden.bs.modal', handleModalCloseCleanup);
+            }
+        }
+
+        const consentModal = document.getElementById('consentManagementModal');
+        const confirmDeleteConsentModalEl = document.getElementById('confirmDeleteConsentModal');
+        const confirmDeleteConsentModal = new bootstrap.Modal(confirmDeleteConsentModalEl);
+        const confirmDeleteConsentOkButton = document.getElementById('confirmDeleteConsentOkButton');
+
+        if (consentModal) {
+            const consentForm = consentModal.querySelector('#consentForm');
+            const consentTableBody = consentModal.querySelector('#consentTableBody');
+            const consentFormTitle = consentModal.querySelector('#consentFormTitle');
+            const cancelEditBtn = consentModal.querySelector('#cancelConsentEditBtn');
+            let currentSubjectIdForConsent = null;
+
+            function refreshConsentList(subjectId) {
+                consentTableBody.innerHTML = '<tr><td colspan="5" class="text-center"><em>Loading...</em></td></tr>';
+                fetch(`/subject/${subjectId}/consents`)
+                    .then(response => response.json())
+                    .then(result => {
+                        consentTableBody.innerHTML = '';
+                        const consents = result.data;
+                        if (!consents || consents.length === 0) {
+                            consentTableBody.innerHTML = '<tr><td colspan="5" class="text-center"><em>No consent records found.</em></td></tr>';
+                        } else {
+                            consents.forEach(consent => {
+                                const row = document.createElement('tr');
+                                const signedAt = consent.signed_at ? consent.signed_at.split('T')[0] : '';
+                                const withdrawnAt = consent.withdrawn_at ? consent.withdrawn_at.split('T')[0] : '';
+                                row.innerHTML = `
+                                <td>${consent.consent_version || ''}</td>
+                                <td>${consent.consent_type || ''}</td>
+                                <td>${signedAt}</td>
+                                <td>${withdrawnAt}</td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-primary edit-consent-btn" data-consent='${JSON.stringify(consent)}'><i class="bi bi-pencil-square me-1"></i>Edit</button>
+                                    
+                                    <button type="button" class="btn btn-sm btn-danger delete-consent-btn" 
+                                        data-consent-id="${consent.consent_id}">
+                                        <i class="bi bi-trash button-icon me-1"></i>Delete
+                                    </button>
+                                </td>`;
+                                consentTableBody.appendChild(row);
+                            });
+                        }
+                    });
+            }
+
+            function resetConsentForm() {
+                consentForm.reset();
+                consentFormTitle.textContent = 'Add New Consent';
+                consentForm.querySelector('#consent_id').value = '';
+                cancelEditBtn.style.display = 'none';
+            }
+
+            consentModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                currentSubjectIdForConsent = button.dataset.subjectId;
+                const subjectName = button.dataset.subjectName;
+                this.querySelector('.modal-title').textContent = `Manage Consent for: ${subjectName}`;
+                consentForm.querySelector('#subject_id_consent').value = currentSubjectIdForConsent;
+                resetConsentForm();
+                refreshConsentList(currentSubjectIdForConsent);
+            });
+
+            consentModal.addEventListener('hidden.bs.modal', handleModalCloseCleanup);
+
+            cancelEditBtn.addEventListener('click', resetConsentForm);
+
+            consentTableBody.addEventListener('click', function (event) {
+                const editBtn = event.target.closest('.edit-consent-btn');
+                if (editBtn) {
+                    const consentData = JSON.parse(editBtn.dataset.consent);
+                    consentFormTitle.textContent = 'Edit Consent';
+                    consentForm.querySelector('#consent_id').value = consentData.consent_id;
+                    consentForm.querySelector('#consent_version').value = consentData.consent_version || '';
+                    consentForm.querySelector('#consent_type').value = consentData.consent_type || '';
+                    consentForm.querySelector('#signed_at').value = consentData.signed_at ? consentData.signed_at.split('T')[0] : '';
+                    consentForm.querySelector('#withdrawn_at').value = consentData.withdrawn_at ? consentData.withdrawn_at.split('T')[0] : '';
+                    consentForm.querySelector('#signature_file').value = consentData.signature_file || '';
+                    cancelEditBtn.style.display = 'inline-block';
+                    consentForm.scrollIntoView({ behavior: 'smooth' });
+                }
+
+                const deleteBtn = event.target.closest('.delete-consent-btn');
+                if (deleteBtn) {
+                    const consentId = deleteBtn.dataset.consentId;
+                    if (confirmDeleteConsentOkButton) {
+                        confirmDeleteConsentOkButton.dataset.consentId = consentId;
+                        confirmDeleteConsentModal.show();
+                    }
+                }
+            });
+
+            if (confirmDeleteConsentOkButton) {
+                confirmDeleteConsentOkButton.addEventListener('click', function () {
+                    const consentId = this.dataset.consentId;
+                    if (consentId) {
+                        fetch(`/subject/consent/delete/${consentId}`, { method: 'POST' })
+                            .then(res => res.json())
+                            .then(result => {
+                                if (result.status === 'success') {
+                                    refreshConsentList(currentSubjectIdForConsent);
+                                    showToast('Consent record deleted.', 'success');
+                                } else {
+                                    showToast('Error: ' + result.message);
+                                }
+                            })
+                            .finally(() => {
+                                confirmDeleteConsentModal.hide();
+                                this.dataset.consentId = '';
+                            });
+                    }
+                });
+            }
+
+            if (confirmDeleteConsentModalEl) {
+                confirmDeleteConsentModalEl.addEventListener('hidden.bs.modal', handleModalCloseCleanup);
+            }
+
+            consentForm.addEventListener('submit', function (e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const submitButton = this.querySelector('button[type="submit"]');
+                submitButton.disabled = true;
+                submitButton.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Saving...`;
+
+                fetch('/subject/consent/save', { method: 'POST', body: formData })
+                    .then(res => res.json())
+                    .then(result => {
+                        if (result.status === 'success') {
+                            resetConsentForm();
+                            refreshConsentList(currentSubjectIdForConsent);
+                            showToast('Consent saved successfully.', 'success');
+                        } else {
+                            showToast('Error saving consent: ' + result.message);
+                        }
+                    })
+                    .finally(() => {
+                        submitButton.disabled = false;
+                        submitButton.innerHTML = '<i class="bi bi-plus-square button-icon me-1"></i>Add';
+                    });
+            });
+        }
+
+        const historyModal = document.getElementById('subjectHistoryModal');
+        if (historyModal) {
+            let currentSubjectIdForHistory = null;
+            const cliniciansBody = document.getElementById('cliniciansTableBody');
+            const diagnosesBody = document.getElementById('diagnosesTableBody');
+            const medicationsBody = document.getElementById('medicationsTableBody');
+            const contactsBody = document.getElementById('contactsTableBody');
+
+            const createCountrySelect = (name, value = '') => {
+                let select = `<select name="${name}" class="form-select form-select-sm">`;
+                select += '<option value="">Select...</option>';
+                countryList.forEach(country => {
+                    select += `<option value="${country}" ${value === country ? 'selected' : ''}>${country}</option>`;
+                });
+                select += '</select>';
+                return select;
+            };
+
+            const createStatusSelect = (name, value = '') => {
+                let select = `<select name="${name}" class="form-select form-select-sm">`;
+                select += '<option value="">Select...</option>';
+                select += `<option value="Active" ${value === 'Active' ? 'selected' : ''}>Active</option>`;
+                select += `<option value="Chronic" ${value === 'Chronic' ? 'selected' : ''}>Chronic</option>`;
+                select += `<option value="Resolved" ${value === 'Resolved' ? 'selected' : ''}>Resolved</option>`;
+                select += '</select>';
+                return select;
+            };
+
+            const createContactTypeSelect = (name, value = '') => {
+                const contactTypes = ['Email', 'Phone', 'SMS', 'Portal', 'Mobile', 'Work', 'Home', 'Other'];
+                let select = `<select name="${name}" class="form-select form-select-sm">`;
+                select += '<option value="">Select...</option>';
+                contactTypes.forEach(type => {
+                    select += `<option value="${type}" ${value === type ? 'selected' : ''}>${type}</option>`;
+                });
+                select += '</select>';
+                return select;
+            };
+
+            const createRow = (cells) => {
+                const row = document.createElement('tr');
+                cells.forEach(cell => row.appendChild(cell));
+                return row;
+            };
+            const createCell = (content) => {
+                const cell = document.createElement('td');
+                if (typeof content === 'string') {
+                    cell.innerHTML = content;
+                } else {
+                    cell.appendChild(content);
+                }
+                return cell;
+            };
+            const createInput = (name, type = 'text', value = '') => {
+                const input = document.createElement('input');
+                input.type = type;
+                input.name = name;
+                input.className = 'form-control form-control-sm';
+                input.value = value;
+                return input;
+            };
+            const createCheckbox = (name, checked = false) => {
+                const check = document.createElement('input');
+                check.type = 'checkbox';
+                check.name = name;
+                check.className = 'form-check-input';
+                check.checked = checked;
+                return check;
+            }
+            const createDeleteBtn = () => {
+                const btn = document.createElement('button');
+                btn.className = 'btn btn-sm btn-danger';
+                btn.innerHTML = 'Delete';
+                btn.type = 'button';
+                btn.onclick = () => {
+                    btn.closest('tr').remove();
+                    if (btn.closest('#cliniciansTable')) {
+                        cliniciansDataTable?.draw();
+                    } else if (btn.closest('#diagnosesTable')) {
+                        diagnosesDataTable?.draw();
+                    } else if (btn.closest('#medicationsTable')) {
+                        medicationsDataTable?.draw();
+                    } else if (btn.closest('#contactsTable')) {
+                        contactsDataTable?.draw();
+                    }
+                };
+                return btn;
+            };
+
+            const destroyDataTables = () => {
+                if (cliniciansDataTable) {
+                    cliniciansDataTable.destroy();
+                    cliniciansDataTable = null;
+                }
+                if (diagnosesDataTable) {
+                    diagnosesDataTable.destroy();
+                    diagnosesDataTable = null;
+                }
+                if (medicationsDataTable) {
+                    medicationsDataTable.destroy();
+                    medicationsDataTable = null;
+                }
+                if (contactsDataTable) {
+                    contactsDataTable.destroy();
+                    contactsDataTable = null;
+                }
+            };
+
+            const initializeDataTables = () => {
+                const datatableConfig = {
+                    paging: false,
+                    searching: false,
+                    info: false,
+                    ordering: false,
+                    order: [],
+                    columnDefs: [],
+                    language: {
+                        emptyTable: "No data available"
+                    }
+                };
+
+                if (document.getElementById('cliniciansTable') && !$.fn.DataTable.isDataTable('#cliniciansTable')) {
+                    cliniciansDataTable = $('#cliniciansTable').DataTable(datatableConfig);
+                }
+
+                if (document.getElementById('diagnosesTable') && !$.fn.DataTable.isDataTable('#diagnosesTable')) {
+                    diagnosesDataTable = $('#diagnosesTable').DataTable(datatableConfig);
+                }
+                if (document.getElementById('medicationsTable') && !$.fn.DataTable.isDataTable('#medicationsTable')) {
+                    medicationsDataTable = $('#medicationsTable').DataTable(datatableConfig);
+                }
+
+                if (document.getElementById('contactsTable') && !$.fn.DataTable.isDataTable('#contactsTable')) {
+                    contactsDataTable = $('#contactsTable').DataTable(datatableConfig);
+                }
+            };
+
+            const datatableConfig = {
+                paging: false,
+                searching: false,
+                info: false,
+                ordering: false,
+                order: [],
+                columnDefs: [],
+                autoWidth: false,
+                language: {
+                    emptyTable: "No data available"
+                }
+            };
+
+            const renderClinicians = (data) => {
+                cliniciansBody.innerHTML = '';
+                data.forEach(c => addClinicianRow(c, false));
+                if (!$.fn.DataTable.isDataTable('#cliniciansTable')) {
+                    cliniciansDataTable = $('#cliniciansTable').DataTable(datatableConfig);
+                }
+            };
+            const renderDiagnoses = (data) => {
+                diagnosesBody.innerHTML = '';
+                data.forEach(d => addDiagnosisRow(d, false));
+                if (!$.fn.DataTable.isDataTable('#diagnosesTable')) {
+                    diagnosesDataTable = $('#diagnosesTable').DataTable(datatableConfig);
+                }
+            };
+            const renderMedications = (data) => {
+                medicationsBody.innerHTML = '';
+                data.forEach(m => addMedicationRow(m, false));
+                if (!$.fn.DataTable.isDataTable('#medicationsTable')) {
+                    medicationsDataTable = $('#medicationsTable').DataTable(datatableConfig);
+                }
+            };
+            const renderContacts = (data) => {
+                contactsBody.innerHTML = '';
+                data.forEach(c => addContactRow(c, false));
+                if (!$.fn.DataTable.isDataTable('#contactsTable')) {
+                    contactsDataTable = $('#contactsTable').DataTable(datatableConfig);
+                }
+            };
+
+            const addClinicianRow = (c = {}, isNewRow = false) => {
+                const row = createRow([
+                    createCell(createInput('first_name', 'text', c.first_name || '')),
+                    createCell(createInput('last_name', 'text', c.last_name || '')),
+                    createCell(createInput('specialty', 'text', c.specialty || '')),
+                    createCell(createInput('organization', 'text', c.organization || '')),
+                    createCell(createCountrySelect('country', c.country || '')),
+                    createCell(createInput('phone', 'text', c.phone || '')),
+                    createCell(createInput('email', 'email', c.email || '')),
+                    createCell(createDeleteBtn()),
+                ]);
+
+                if (isNewRow && cliniciansDataTable) {
+                    cliniciansDataTable.row.add(row).draw();
+                } else {
+                    cliniciansBody.appendChild(row);
+                }
+            };
+            const addDiagnosisRow = (d = {}, isNewRow = false) => {
+                const row = createRow([
+                    createCell(createInput('diagnosis_date', 'date', d.diagnosis_date ? d.diagnosis_date.split('T')[0] : '')),
+                    createCell(createInput('diagnosis_code', 'text', d.diagnosis_code || '')),
+                    createCell(createInput('diagnosis_description', 'text', d.diagnosis_description || '')),
+                    createCell(createStatusSelect('status', d.status || '')),
+                    createCell(createCheckbox('primary_diagnosis', d.primary_diagnosis || false)),
+                    createCell(createDeleteBtn()),
+                ]);
+
+                if (isNewRow && diagnosesDataTable) {
+                    diagnosesDataTable.row.add(row).draw();
+                } else {
+                    diagnosesBody.appendChild(row);
+                }
+            };
+            const addMedicationRow = (m = {}, isNewRow = false) => {
+                const row = createRow([
+                    createCell(createInput('medication_name', 'text', m.medication_name || '')),
+                    createCell(createInput('dose', 'text', m.dose || '')),
+                    createCell(createInput('indication', 'text', m.indication || '')),
+                    createCell(createInput('start_date', 'date', m.start_date ? m.start_date.split('T')[0] : '')),
+                    createCell(createInput('end_date', 'date', m.end_date ? m.end_date.split('T')[0] : '')),
+                    createCell(createCheckbox('currently_taking', m.currently_taking || false)),
+                    createCell(createDeleteBtn()),
+                ]);
+
+                if (isNewRow && medicationsDataTable) {
+                    medicationsDataTable.row.add(row).draw();
+                } else {
+                    medicationsBody.appendChild(row);
+                }
+            };
+            const addContactRow = (c = {}, isNewRow = false) => {
+                const row = createRow([
+                    createCell(createContactTypeSelect('contact_type', c.contact_type || '')),
+                    createCell(createInput('contact_value', 'text', c.contact_value || '')),
+                    createCell(createCheckbox('preferred', c.preferred || false)),
+                    createCell(createCheckbox('verified', c.verified || false)),
+                    createCell(createDeleteBtn()),
+                ]);
+
+                if (isNewRow && contactsDataTable) {
+                    contactsDataTable.row.add(row).draw();
+                } else {
+                    contactsBody.appendChild(row);
+                }
+            };
+
+            $('#addClinicianBtn').on('click', () => {
+                addClinicianRow({}, true);
+                if (cliniciansDataTable) {
+                    cliniciansDataTable.draw();
+                }
+            });
+            $('#addDiagnosisBtn').on('click', () => {
+                addDiagnosisRow({}, true);
+                if (diagnosesDataTable) {
+                    diagnosesDataTable.draw();
+                }
+            });
+            $('#addMedicationBtn').on('click', () => {
+                addMedicationRow({}, true);
+                if (medicationsDataTable) {
+                    medicationsDataTable.draw();
+                }
+            });
+            $('#addContactBtn').on('click', () => {
+                addContactRow({}, true);
+                if (contactsDataTable) {
+                    contactsDataTable.draw();
+                }
+            });
+
+            historyModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                currentSubjectIdForHistory = button.dataset.subjectId;
+                const subjectName = button.dataset.subjectName;
+                this.querySelector('.modal-title').textContent = `History for Subject: ${subjectName}`;
+
+                cliniciansBody.innerHTML = '';
+                diagnosesBody.innerHTML = '';
+                medicationsBody.innerHTML = '';
+                contactsBody.innerHTML = '';
+
+                fetch(`/subject/${currentSubjectIdForHistory}/history`)
+                    .then(res => res.json())
+                    .then(data => {
+                        renderClinicians(data.clinicians || []);
+                        renderDiagnoses(data.diagnoses || []);
+                        renderMedications(data.medications || []);
+                        renderContacts(data.contacts || []);
+                    });
+            });
+
+            historyModal.addEventListener('hidden.bs.modal', function () {
+                destroyDataTables();
+                handleModalCloseCleanup();
+            });
+
+            // Fix DataTables columns when switching tabs in history modal (DataTables has issues with hidden tables)
+            $('#historyTab button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+                if (cliniciansDataTable) cliniciansDataTable.columns.adjust().draw();
+                if (diagnosesDataTable) diagnosesDataTable.columns.adjust().draw();
+                if (medicationsDataTable) medicationsDataTable.columns.adjust().draw();
+                if (contactsDataTable) contactsDataTable.columns.adjust().draw();
+            });
+
+            $('#saveHistoryBtn').on('click', function () {
+                const saveData = {
+                    clinicians: [], diagnoses: [], medications: [], contacts: []
+                };
+
+                $('#cliniciansTableBody tr').each(function () {
+                    saveData.clinicians.push({
+                        first_name: $(this).find('[name="first_name"]').val() || null,
+                        last_name: $(this).find('[name="last_name"]').val() || null,
+                        specialty: $(this).find('[name="specialty"]').val() || null,
+                        organization: $(this).find('[name="organization"]').val() || null,
+                        country: $(this).find('[name="country"]').val() || null,
+                        phone: $(this).find('[name="phone"]').val() || null,
+                        email: $(this).find('[name="email"]').val() || null,
+                    });
+                });
+
+                $('#diagnosesTableBody tr').each(function () {
+                    const statusVal = $(this).find('[name="status"]').val();
+                    saveData.diagnoses.push({
+                        diagnosis_date: $(this).find('[name="diagnosis_date"]').val() || null,
+                        diagnosis_code: $(this).find('[name="diagnosis_code"]').val() || null,
+                        diagnosis_description: $(this).find('[name="diagnosis_description"]').val() || null,
+                        status: statusVal || null,
+                        primary_diagnosis: $(this).find('[name="primary_diagnosis"]').is(':checked'),
+                    });
+                });
+
+                $('#medicationsTableBody tr').each(function () {
+                    saveData.medications.push({
+                        medication_name: $(this).find('[name="medication_name"]').val() || null,
+                        dose: $(this).find('[name="dose"]').val() || null,
+                        indication: $(this).find('[name="indication"]').val() || null,
+                        start_date: $(this).find('[name="start_date"]').val() || null,
+                        end_date: $(this).find('[name="end_date"]').val() || null,
+                        currently_taking: $(this).find('[name="currently_taking"]').is(':checked'),
+                    });
+                });
+
+                $('#contactsTableBody tr').each(function () {
+                    const contactTypeVal = $(this).find('[name="contact_type"]').val();
+                    saveData.contacts.push({
+                        contact_type: contactTypeVal || null,
+                        contact_value: $(this).find('[name="contact_value"]').val() || null,
+                        preferred: $(this).find('[name="preferred"]').is(':checked'),
+                        verified: $(this).find('[name="verified"]').is(':checked'),
+                    });
+                });
+
+                const saveBtn = this;
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Saving...`;
+
+                fetch(`/subject/${currentSubjectIdForHistory}/history`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(saveData)
+                })
+                    .then(res => res.json())
+                    .then(result => {
+                        if (result.status === 'success') {
+                            saveBtn.innerHTML = '✓ Saved Successfully';
+                            saveBtn.classList.remove('btn-primary');
+                            saveBtn.classList.add('btn-success');
+
+                            showToast('History saved successfully.', 'success');
+
+                            setTimeout(() => {
+                                saveBtn.innerHTML = 'Save Changes';
+                                saveBtn.classList.remove('btn-success');
+                                saveBtn.classList.add('btn-primary');
+                            }, 2000);
+
+                        } else {
+                            showToast('Error saving history: ' + result.message);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Save failed:', err);
+                        showToast('An unexpected error occurred.');
+                    })
+                    .finally(() => {
+                        saveBtn.disabled = false;
+                        if (!saveBtn.innerHTML.includes('✓')) {
+                            saveBtn.innerHTML = 'Save Changes';
+                            saveBtn.classList.remove('btn-success');
+                            saveBtn.classList.add('btn-primary');
+                        }
+                    });
+            });
+        }
+    });
+</script>
+{% endblock %}

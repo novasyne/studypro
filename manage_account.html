@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Account{% endblock %}
+
+{% block content %}
+
+<body data-page-name="manage_account">
+    <br>
+    <div class="container-fluid">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Your Account Details</h2>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('manage_account') }}">
+                            <input type="hidden" name="action" value="update_details">
+                            <input type="hidden" name="participant_id" value="{{ user_to_edit.participant_id }}">
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="first_name" class="form-label">First Name <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="first_name"
+                                        value="{{ user_to_edit.first_name }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="last_name" class="form-label">Last Name <span
+                                            class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="last_name"
+                                        value="{{ user_to_edit.last_name }}" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">Email <span
+                                            class="text-danger">*</span></label>
+                                    <input type="email" class="form-control" name="email"
+                                        value="{{ user_to_edit.email }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="phone" class="form-label">Phone</label>
+                                    <input type="text" class="form-control" name="phone"
+                                        value="{{ user_to_edit.phone or '' }}">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="role" class="form-label">Role <span class="text-danger">*</span></label>
+                                <!-- User can now edit their own role -->
+                                <select class="form-select" name="role" required>
+                                    <option value="" disabled>Select a role...</option>
+                                    {% for role in roles_list %}
+                                    <option value="{{ role }}" {% if user_to_edit.role==role %}selected{% endif %}>{{
+                                        role }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="affiliation" class="form-label">Affiliation</label>
+                                    <input type="text" class="form-control" name="affiliation"
+                                        value="{{ user_to_edit.affiliation or '' }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="department" class="form-label">Department</label>
+                                    <input type="text" class="form-control" name="department"
+                                        value="{{ user_to_edit.department or '' }}">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="orcid" class="form-label">ORCID</label>
+                                    <input type="text" class="form-control" name="orcid"
+                                        value="{{ user_to_edit.orcid or '' }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="country" class="form-label">Country</label>
+                                    <input type="text" class="form-control" name="country"
+                                        value="{{ user_to_edit.country or '' }}">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="funding_role" class="form-label">Funding Role</label>
+                                <!-- User can now edit their own funding role -->
+                                <input type="text" class="form-control" name="funding_role"
+                                    value="{{ user_to_edit.funding_role or '' }}">
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="percent_effort" class="form-label">Percent Effort (%)</label>
+                                    <!-- User can now edit their own percent effort -->
+                                    <input type="number" class="form-control" name="percent_effort" step="0.01"
+                                        value="{{ user_to_edit.percent_effort or '' }}">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="salary_contribution" class="form-label">Salary Contribution ($)</label>
+                                    <!-- User can now edit their own salary contribution -->
+                                    <input type="number" class="form-control" name="salary_contribution" step="0.01"
+                                        value="{{ user_to_edit.salary_contribution or '' }}">
+                                </div>
+                               <div class="col-md-6 mb-3">
+    <label for="ai_api_key" class="form-label small">OpenAI API Key</label>
+    <input type="password" class="form-control form-control-sm" id="ai_api_key"
+        name="ai_api_key" value="{{ user_account_to_edit.ai_api_key or '' }}"
+        placeholder="Enter API Key..." autocomplete="off">
+    <div class="form-text">Optional. Used for AI-powered features.</div>
+</div>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary"><i
+                                        class="bi bi-plus-square button-icon me-1"></i>Update Details</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Change Your Password</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" action="{{ url_for('manage_account') }}">
+                            <input type="hidden" name="action" value="change_password">
+                            <input type="hidden" name="participant_id" value="{{ user_to_edit.participant_id }}">
+                            <div class="mb-3">
+                                <label for="old_password" class="form-label">Old Password</label>
+                                <input type="password" class="form-control" name="old_password" required autocomplete="current-password">
+                            </div>
+                            <div class="mb-3">
+                                <label for="new_password" class="form-label">New Password</label>
+                                <input type="password" class="form-control" name="new_password" required autocomplete="new-password">
+                                <div class="form-text">Must be at least 8 characters and contain an uppercase letter, a
+                                    lowercase letter, and a number.</div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirm_password" class="form-label">Confirm New Password</label>
+                                <input type="password" class="form-control" name="confirm_password" required autocomplete="new-password">
+                            </div>
+                            <div class="d-flex justify-content-end">
+                                <button type="submit" class="btn btn-primary"><i
+                                        class="bi bi-check button-icon me-1"></i>Change Password</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Your Associated Studies</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if studies_data %}
+                        <ul class="list-group">
+                            {% for study in studies_data %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <div>
+                                    {{ study.name }}
+                                    {% if study.is_admin %}
+                                    <span class="badge bg-success ms-2"><i class="bi bi-shield-check me-1"></i>Study
+                                        Admin</span>
+                                    {% endif %}
+                                </div>
+                                <a href="{{ url_for('edit_study', study_id=study.study_id) }}"
+                                    class="btn btn-sm btn-info" style="width:160px"><i
+                                        class="bi bi-pencil-square me-1"></i>Manage Study</a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="text-muted">You are not currently associated with any studies.</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if is_admin %}
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Administrator Tools</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>As you are an administrator for at least one study, you can access the system-wide audit log.</p>
+                        <a href="{{ url_for('view_audit_log') }}" class="btn btn-info" style="width:180px;"><i
+                                class="bi bi-book me-1"></i>View Audit Log</a>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if user_account_to_edit %}
+                <div class="card mt-4 border-danger">
+                    <div class="card-header bg-danger text-white">
+                        <h3 class="card-title mb-0">Close Your Account</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>Closing this account will permanently delete your login credentials and your
+                            associated participant profile.</p>
+                        <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+                        <p><small>Note: If you are the <strong>last participant</strong> associated with any
+                                studies, those studies and all their related data will also be permanently
+                                deleted.</small></p>
+                        <button type="button" class="btn btn-danger" data-bs-toggle="modal"
+                            data-bs-target="#closeAccountModal">
+                            <i class="bi bi-trash button-icon me-1"></i>Close Your Account
+                        </button>
+                    </div>
+                </div>
+                {% else %}
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h3 class="card-title mb-0">Account Management</h3>
+                    </div>
+                    <div class="card-body">
+                        <p class="text-muted">You ({{ user_to_edit.email }}) do not have a system login
+                            account. To remove yourself from studies, please visit the 'Manage Study' -> 'Participants'
+                            page
+                            for each associated study.</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <br /><br />
+            </div>
+        </div>
+    </div>
+
+    {% if user_account_to_edit %}
+    <div class="modal fade" id="closeAccountModal" tabindex="-1" aria-labelledby="closeAccountModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="closeAccountModalLabel">Confirm Account Closure</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you absolutely sure you want to permanently close your account
+                        (<strong>{{user_to_edit.email }}</strong>)?</p>
+                    <p class="text-danger"><strong>Warning:</strong> If you are the last participant linked to any
+                        studies, those studies and all their associated data will also be permanently deleted.</p>
+                    <p class="text-danger"><strong>This action cannot be undone.</strong></p>
+                </div>
+                <div class="modal-footer">
+                    <form action="{{ url_for('close_account', user_id_to_delete=user_account_to_edit.id) }}"
+                        method="POST">
+                        <button type="submit" class="btn btn-danger"><i class="bi bi-trash button-icon me-1"></i>OK,
+                            Close My Account</button>
+                    </form>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                            class="bi bi-x-circle button-icon me-1"></i>Cancel</button>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</body>
+{% endblock %}

@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+
+{% block title %}Financial Ledger for {{ study.name }}{% endblock %}
+
+{% block content %}
+
+<body data-page-name="finances">
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 mb-0">Financial Ledger</h1>
+                <p class="text-muted mb-0">For study: <strong>{{ study.name }}</strong></p>
+            </div>
+            <div>
+                <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#addExpenseModal"><i
+                        class="fas fa-minus-circle me-2"></i>Add Expense</button>
+                <button class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#topUpBudgetModal"><i
+                        class="fas fa-plus-circle me-2"></i>Top-up Budget</button>
+                <a href="{{ url_for('edit_study', study_id=study.study_id) }}" class="btn btn-secondary ms-2"><i
+                        class="bi bi-x-circle button-icon me-1"></i>Close</a>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">Total Budget</h5>
+                        <p class="card-text fs-4 fw-bold">{{ study.currency or '$' }}{{ "{:,.2f}".format(total_budget)
+                            }}</p>
+                        <small class="text-muted">Initial budget plus all top-ups.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title text-danger">Total Expenses</h5>
+                        <p class="card-text fs-4 fw-bold">{{ study.currency or '$' }}{{ "{:,.2f}".format(total_expenses)
+                            }}</p>
+                        <small class="text-muted">Sum of all recorded expenses.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">Remaining Balance</h5>
+                        <p class="card-text fs-4 fw-bold">{{ study.currency or '$' }}{{
+                            "{:,.2f}".format(remaining_balance) }}</p>
+                        {% if forecast_date %}
+                        <small class="text-muted">Budget forecasted to last until <strong>{{ forecast_date
+                                }}</strong>.</small>
+                        {% else %}
+                        <small class="text-muted">Not enough data for a forecast.</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card shadow-sm">
+            <div class="card-header">
+                <h4 class="card-title mb-0">Transaction History</h4>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Date</th>
+                                <th scope="col">Description</th>
+                                <th scope="col">Type / Category</th>
+                                <th scope="col" class="text-end">Income ({{ study.currency or '$' }})</th>
+                                <th scope="col" class="text-end">Expense ({{ study.currency or '$' }})</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if transactions %}
+                            {% for transaction in transactions %}
+                            <tr>
+                                <td>{{ transaction.transaction_date.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ transaction.description }}</td>
+                                <td>
+                                    {% if transaction.transaction_type == 'EXPENSE' %}
+                                    <span class="badge bg-danger">Expense</span>
+                                    <div class="text-muted small mt-1">{{ transaction.category.category_name if
+                                        transaction.category else 'Uncategorized' }}</div>
+                                    {% elif transaction.transaction_type == 'TOPUP' %}
+                                    <span class="badge bg-success">Top-up</span>
+                                    {% else %}
+                                    <span class="badge bg-primary">Budget</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if transaction.transaction_type in ['BUDGET', 'TOPUP'] %}
+                                    <span class="text-success fw-bold">{{ "{:,.2f}".format(transaction.amount) }}</span>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if transaction.transaction_type == 'EXPENSE' %}
+                                    <span class="text-danger">({{ "{:,.2f}".format(transaction.amount) }})</span>
+                                    {% else %}
+                                    -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center py-5">
+                                    <p class="mb-0 text-muted">No financial transactions recorded yet.</p>
+                                    <small>Start by setting the initial budget in the study settings or adding an
+                                        expense.</small>
+                                </td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer">
+                <h5 class="mb-2">Budget vs. Expenses</h5>
+                {% set percentage_spent = (total_expenses / total_budget * 100) if total_budget > 0 else 0 %}
+                <div class="progress" style="height: 25px; background-color: green;">
+                    <div class="progress-bar bg-danger" role="progressbar" style="width: {{ percentage_spent }}%;"
+                        aria-valuenow="{{ total_expenses }}" aria-valuemin="0" aria-valuemax="{{ total_budget }}">
+                        Spent: {{ "{:,.0f}".format(percentage_spent) }}%
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between mt-1">
+                    <small><strong>Start:</strong> {{ study.currency or '$' }}0</small>
+                    <small><strong>Current:</strong> {{ study.currency or '$' }}{{ "{:,.2f}".format(total_expenses)
+                        }}</small>
+                    <small><strong>Total Budget:</strong> {{ study.currency or '$' }}{{ "{:,.2f}".format(total_budget)
+                        }}</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="addExpenseModal" tabindex="-1" aria-labelledby="addExpenseModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('add_expense', study_id=study.study_id) }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addExpenseModalLabel">Add New Expense</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="expense_date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="expense_date" name="expense_date"
+                                value="{{ today_date.strftime('%Y-%m-%d') }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="category_id" class="form-label">Category</label>
+                            <select class="form-select" id="category_id" name="category_id" required>
+                                <option value="" disabled selected>Select a category...</option>
+                                {% for category in expense_categories %}
+                                <option value="{{ category.category_id }}">{{ category.category_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description" rows="3"
+                                required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">{{ study.currency or '$' }}</span>
+                                <input type="number" class="form-control" id="amount" name="amount" step="0.01"
+                                    placeholder="e.g., 250.00" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary"><i
+                                class="bi bi-plus-square button-icon me-1"></i>Save Expense</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                                class="bi bi-x-circle button-icon me-1"></i>Close</button>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="topUpBudgetModal" tabindex="-1" aria-labelledby="topUpBudgetModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form method="POST" action="{{ url_for('topup_budget', study_id=study.study_id) }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="topUpBudgetModalLabel">Top-up Budget</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="topup_date" class="form-label">Date</label>
+                            <input type="date" class="form-control" id="topup_date" name="topup_date"
+                                value="{{ today_date.strftime('%Y-%m-%d') }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description / Funding Source</label>
+                            <input type="text" class="form-control" id="description" name="description"
+                                placeholder="e.g., Additional grant from XYZ" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">{{ study.currency or '$' }}</span>
+                                <input type="number" class="form-control" id="amount" name="amount" step="0.01"
+                                    placeholder="e.g., 10000.00" required>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary"><i
+                                class="bi bi-plus-square button-icon me-1"></i>Add Funds</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i
+                                class="bi bi-x-circle button-icon me-1"></i>Close</button>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</body>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    xintegrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
+{% endblock %}

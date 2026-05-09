@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Create Study: Step 2{% endblock %}
+
+{% block head %}
+{{ super() }}
+{% endblock %}
+
+{% block content %}
+
+<body data-page-name="create_study_step2">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-10">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Create a New Study - Step 2 of 3</h2>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST">
+                            <h5 class="card-subtitle mb-3 text-muted">Define Study Arms</h5>
+                            <p>Add, edit, or remove the arms for your study. You must have at least one
+                                arm with a name to continue.</p>
+
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Arm Name</th>
+                                        <th>Description</th>
+                                        <th class="text-center" style="width: 120px;">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for arm in arms_data %}
+                                    <tr>
+                                        <td>
+                                            <input type="text" name="arm_name_{{ loop.index0 }}"
+                                                value="{{ arm.get('arm_name', '') }}" class="form-control"
+                                                placeholder="e.g., Control Group">
+                                        </td>
+                                        <td>
+                                            <input type="text" name="description_{{ loop.index0 }}"
+                                                value="{{ arm.get('description', '') }}" class="form-control"
+                                                placeholder="e.g., Receives placebo">
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="submit" name="action" value="remove_{{ loop.index0 }}"
+                                                class="btn btn-sm btn-danger"><i
+                                                    class="bi bi-trash button-icon me-1"></i>Remove</button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <br/>
+                            <div class="d-flex justify-content-end mb-3">
+                                <button type="submit" name="action" value="add_arm" class="btn btn-primary"><i
+                                        class="bi bi-plus-square button-icon me-1"></i>Add Group</button>
+                            </div>
+
+                            <hr class="mt-4">
+
+                            <div class="d-flex justify-content-between">
+                                <a href="{{ url_for('create_study_step1') }}" class="btn btn-secondary"><i
+                                        class="bi bi-skip-backward button-icon me-1"></i>Previous</a>
+                                <div>
+                                    <button type="submit" name="action" value="next_step"
+                                        class="btn btn-primary me-2"><i
+                                            class="bi bi-fast-forward button-icon me-1"></i>Next</button>
+                                    <a href="{{ url_for('main_app') }}" class="btn btn-secondary"><i
+                                            class="bi bi-x-circle button-icon me-1"></i>Cancel</a>
+
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+{% endblock %}

@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <title>{% block title %}Novasyne STUDYPRO{% endblock %}</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    crossorigin="anonymous">
+  <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    /* ========================================
+       DESIGN SYSTEM - CSS Custom Properties
+       ======================================== */
+    :root {
+      /* Primary Palette */
+      --primary: #0f4c81;
+      --primary-light: #1a6bb5;
+      --primary-dark: #0a3a63;
+      
+      /* Accent Colors */
+      --accent: #00b894;
+      --accent-light: #55efc4;
+      --accent-dark: #00a381;
+      
+      /* Semantic Colors */
+      --success: #00b894;
+      --danger: #d63031;
+      --warning: #fdcb6e;
+      --info: #0984e3;
+      
+      /* Neutral Surfaces */
+      --surface: #ffffff;
+      --surface-alt: #f8fafc;
+      --surface-hover: #f1f5f9;
+      --background: linear-gradient(135deg, #f0f4f8 0%, #e2e8f0 100%);
+      
+      /* Borders */
+      --border: #e2e8f0;
+      --border-light: #f1f5f9;
+      
+      /* Typography Colors */
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --text-inverse: #ffffff;
+      
+      /* Shadows */
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+      --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
+      
+      /* Border Radius */
+      --radius-sm: 6px;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      
+      /* Transitions */
+      --transition-fast: 0.15s ease;
+      --transition: 0.2s ease;
+      --transition-slow: 0.3s ease;
+    }
+
+    /* ========================================
+       BASE STYLES
+       ======================================== */
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--background);
+      min-height: 100vh;
+      color: var(--text-primary);
+      font-size: 14px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ========================================
+       TYPOGRAPHY
+       ======================================== */
+    h1, h2, h3, h4, h5, h6 {
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      
+    }
+
+    .text-primary { color: var(--primary) !important; }
+    .text-accent { color: var(--accent) !important; }
+    .text-muted { color: var(--text-muted) !important; }
+
+    /* ========================================
+       NAVBAR / HEADER
+       ======================================== */
+    .app-navbar {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      padding: 0.75rem 0;
+      box-shadow: var(--shadow-lg);
+      position: relative;
+      z-index: 1000;
+    }
+
+    .app-navbar .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+    }
+
+    .app-navbar .brand-logo-wrapper {
+      background: white;
+      padding: 8px 12px;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .app-navbar .brand-logo-wrapper img {
+      height: 36px;
+      width: auto;
+    }
+
+    .app-navbar .brand-text {
+      color: var(--text-inverse);
+    }
+
+    .app-navbar .brand-text .brand-name {
+      font-size: 1.125rem;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+
+    .app-navbar .brand-text .brand-tagline {
+      font-size: 0.7rem;
+      opacity: 0.8;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .app-navbar .nav-link {
+      color: rgba(255,255,255,0.85) !important;
+      font-weight: 500;
+      font-size: 0.875rem;
+      padding: 0.5rem 1rem !important;
+      border-radius: var(--radius);
+      transition: var(--transition);
+    }
+
+    .app-navbar .nav-link:hover {
+      color: var(--text-inverse) !important;
+      background: rgba(255,255,255,0.1);
+    }
+
+    .app-navbar .nav-link.active {
+      color: var(--text-inverse) !important;
+      background: rgba(255,255,255,0.15);
+    }
+
+    .navbar-toggler {
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 0.4rem 0.6rem;
+    }
+
+    .navbar-toggler-icon {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.85%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    }
+
+    /* ========================================
+       MAIN CONTAINER
+       ======================================== */
+    .main-container {
+      max-width: 1400px;
+      padding: 0 1.5rem;
+      margin: 0 auto;
+    }
+
+    .container-fluid {
+      max-width: 1400px;
+
+    }
+
+    /* ========================================
+       CARDS
+       ======================================== */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+    }
+
+    .card:hover {
+      box-shadow: var(--shadow-lg);
+    }
+
+    .card-header {
+      background: linear-gradient(135deg, var(--surface-alt) 0%, #e2e8f0 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 1.25rem;
+      font-weight: 600;
+    }
+
+    .card-body {
+      padding: 1.5rem;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 1rem;
+    }
+
+    /* ========================================
+       BUTTONS
+       ======================================== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      border-radius: var(--radius);
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+      text-decoration: none;
+      white-space: nowrap;
+      line-height: 1.5;
+    }
+
+    .btn i { font-size: 0.95rem; }
+
+    .btn-primary {
+      background: var(--primary);
+      color: var(--text-inverse);
+      border: 1px solid var(--primary);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-light);
+      border-color: var(--primary-light);
+      color: var(--text-inverse);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(15, 76, 129, 0.3);
+    }
+
+    .btn-primary:active {
+      background: var(--primary-dark);
+      transform: translateY(0);
+    }
+
+    .btn-secondary {
+      background: var(--surface-alt);
+      color: var(--text-primary);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--border);
+      color: var(--text-primary);
+      border-color: var(--border);
+    }
+
+    .btn-accent {
+      background: var(--accent);
+      color: var(--text-inverse);
+      border: 1px solid var(--accent);
+    }
+
+    .btn-accent:hover:not(:disabled) {
+      background: var(--accent-dark);
+      border-color: var(--accent-dark);
+      color: var(--text-inverse);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0, 184, 148, 0.3);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: var(--text-inverse);
+      border: 1px solid var(--success);
+    }
+
+    .btn-success:hover:not(:disabled) {
+      background: #00a381;
+      border-color: #00a381;
+      color: var(--text-inverse);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: var(--text-inverse);
+      border: 1px solid var(--danger);
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: #b91c1c;
+      border-color: #b91c1c;
+      color: var(--text-inverse);
+    }
+
+    .btn-outline-primary {
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+    }
+
+    .btn-outline-primary:hover:not(:disabled) {
+      background: var(--primary);
+      color: var(--text-inverse);
+    }
+
+    .btn-sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
+    }
+
+    .btn-lg {
+      padding: 0.625rem 1.25rem;
+      font-size: 1rem;
+    }
+
+    .btn:disabled, .btn.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+
+    /* Fix button group border-radius - all buttons should have consistent rounded corners */
+.btn-group > .btn,
+.btn-group > .btn-group > .btn,
+.btn-group > .btn:not(:last-child):not(.dropdown-toggle),
+.btn-group > .btn-group:not(:last-child) > .btn,
+.btn-group > .btn:not(:first-child),
+.btn-group > .btn-group:not(:first-child) > .btn,
+.btn-group > .btn.dropdown-toggle-split:first-child,
+.btn-group > .btn:nth-child(n) {
+    border-radius: var(--radius) !important;
+}
+
+/* Add small gap between buttons in a group for visual separation */
+.btn-group > .btn + .btn,
+.btn-group > .btn + .btn-group,
+.btn-group > .btn-group + .btn,
+.btn-group > .btn-group + .btn-group {
+    margin-left: 0.25rem;
+}
+
+/* Remove the negative margin Bootstrap uses to overlap borders */
+.btn-group > .btn:not(:first-child),
+.btn-group > .btn-group:not(:first-child) {
+    margin-left: 0.25rem;
+}
+.btn-group {
+    gap: 5px;
+}
+
+    /* ========================================
+       FORMS
+       ======================================== */
+    .form-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-bottom: 0.375rem;
+    }
+
+    .form-control, .form-select {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.625rem 0.875rem;
+      font-size: 0.9375rem;
+      color: var(--text-primary);
+      background: var(--surface);
+      transition: var(--transition-fast);
+    }
+
+    .form-control:focus, .form-select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(15, 76, 129, 0.1);
+      outline: none;
+    }
+
+    .form-control::placeholder {
+      color: var(--text-muted);
+    }
+
+    .form-check-input:checked {
+      background-color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .badge {
+      line-height: 2;
+      min-width:80px;
+    }
+
+
+    /* ========================================
+       ALERTS
+       ======================================== */
+    .alert {
+      border: none;
+      border-radius: var(--radius);
+      font-weight: 500;
+      box-shadow: var(--shadow-sm);
+      padding: 1rem 1.25rem;
+      margin-top: 1rem;
+    }
+
+    .alert-success {
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+      color: #065f46;
+    }
+
+    .alert-danger {
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+      color: #991b1b;
+    }
+
+    .alert-warning {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      color: #92400e;
+    }
+
+    .alert-info {
+      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+      color: #1e40af;
+    }
+
+    /* ========================================
+       TABLES
+       ======================================== */
+    .table {
+      margin: 0;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .table thead th {
+      background: var(--surface-alt);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+      padding: 0.875rem 1rem;
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+
+    .table tbody td {
+      font-size: 0.875rem;
+      padding: 0.75rem 1rem;
+      vertical-align: middle;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-primary);
+    }
+
+    .table tbody tr {
+      transition: var(--transition-fast);
+    }
+
+    .table-hover tbody tr:hover {
+      background: var(--surface-hover) !important;
+    }
+
+    .table-striped tbody tr:nth-of-type(odd) {
+      background: var(--surface-alt);
+    }
+
+    /* ========================================
+       MODALS
+       ======================================== */
+    .modal-content {
+      border: none;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-xl);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+      color: var(--text-inverse);
+      padding: 1rem 1.25rem;
+      border: none;
+    }
+
+    .modal-header .modal-title {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .modal-header .btn-close {
+      filter: brightness(0) invert(1);
+      opacity: 0.8;
+    }
+
+    .modal-header .btn-close:hover {
+      opacity: 1;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+    }
+
+    .modal-footer {
+      background: var(--surface-alt);
+      border-top: 1px solid var(--border);
+      padding: 1rem 1.25rem;
+      gap: 0.5rem;
+    }
+
+    /* ========================================
+       PAGINATION
+       ======================================== */
+    .pagination .page-link {
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 0.375rem 0.75rem;
+      font-size: 0.875rem;
+      transition: var(--transition-fast);
+    }
+
+    .pagination .page-link:hover {
+      background: var(--surface-alt);
+      color: var(--text-primary);
+      border-color: var(--border);
+    }
+
+    .pagination .page-item.active .page-link {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: var(--text-inverse);
+    }
+
+    /* ========================================
+       UTILITY CLASSES
+       ======================================== */
+    .shadow-elevated {
+      box-shadow: var(--shadow-lg);
+    }
+
+    .bg-surface {
+      background: var(--surface);
+    }
+
+    .bg-surface-alt {
+      background: var(--surface-alt);
+    }
+
+    .border-subtle {
+      border: 1px solid var(--border);
+    }
+
+    .rounded-lg {
+      border-radius: var(--radius-lg);
+    }
+
+    /* ========================================
+       SCROLLBAR
+       ======================================== */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--surface-alt);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    /* ========================================
+       RESPONSIVE
+       ======================================== */
+    @media (max-width: 992px) {
+      .main-container {
+        padding: 0 1rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      body {
+        font-size: 13px;
+      }
+      
+      .app-navbar .brand-text .brand-name {
+        font-size: 1rem;
+      }
+      
+      .btn {
+        padding: 0.5rem 0.875rem;
+      }
+    }
+
+    /* ========================================
+       LEGACY BOOTSTRAP OVERRIDES
+       ======================================== */
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    .btn-info {
+      background-color: #5A86D5;
+      border-color: var(--info);
+      color: var(--text-inverse);
+    }
+
+    .btn-info:hover {
+      background-color: #0369a1;
+      border-color: #0369a1;
+      color: var(--text-inverse);
+    }
+
+    .btn-info.active {
+      background-color:  #5A86D5;
+      border-color: var(--primary) !important;
+      color: var(--text-inverse);
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Help Modal -->
+  <div class="modal fade" id="helpModal" tabindex="-1" aria-labelledby="helpModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="helpModalTitle"><i class="bi bi-question-circle me-2"></i>Help</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body" id="helpModalBody">
+          <p>Loading help content...</p>
+        </div>
+        <div class="modal-footer">
+          <a href="{{ url_for('best_practices') }}" class="btn btn-primary">
+            <i class="bi bi-list-check me-1"></i>Best Practice Guide
+          </a>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+            <i class="bi bi-x-circle me-1"></i>Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="app-navbar navbar navbar-expand-lg">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="https://www.novasyne.com">
+        <div class="brand-logo-wrapper">
+          <img src="{{ url_for('static', filename='novasyne_logo_sm.png') }}" alt="Novasyne Logo">
+        </div>
+        <div class="brand-text d-none d-sm-block">
+          <div class="brand-name">STUDYPRO</div>
+          <div class="brand-tagline">Clinical Trial Management</div>
+        </div>
+      </a>
+      
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto align-items-center gap-1">
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('about') }}">
+              <i class="bi bi-info-circle me-1"></i>About
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('contact') }}">
+              <i class="bi bi-envelope me-1"></i>Contact
+            </a>
+          </li>
+          {% if current_user.is_authenticated %}
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('main_app') }}">
+              <i class="bi bi-speedometer2 me-1"></i>Dashboard
+            </a>
+          </li>
+          {% if request.endpoint != 'about' and request.endpoint != 'features' and request.endpoint != 'faq' and
+          request.endpoint != 'register' and request.endpoint != 'confirm_email' and request.endpoint != 'index' %}
+          <li class="nav-item">
+            <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#helpModal">
+              <i class="bi bi-question-circle me-1"></i>Help
+            </a>
+          </li>
+          {% endif %}
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('manage_account') }}">
+              <i class="bi bi-person-circle me-1"></i>Account
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('logout') }}">
+              <i class="bi bi-box-arrow-right me-1"></i>Logout
+            </a>
+          </li>
+          {% else %}
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('login') }}">
+              <i class="bi bi-box-arrow-in-right me-1"></i>Login
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for('register') }}">
+              <i class="bi bi-person-plus me-1"></i>Register
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-container py-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+      <i class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-circle' if category == 'danger' else 'info-circle' }} me-2"></i>
+      {{ message }}
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+    crossorigin="anonymous"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const helpModal = document.getElementById('helpModal');
+      if (helpModal) {
+        helpModal.addEventListener('show.bs.modal', function (event) {
+          const modalTitle = document.getElementById('helpModalTitle');
+          const modalBody = document.getElementById('helpModalBody');
+          const pageName = document.body.getAttribute('data-page-name');
+
+          if (pageName) {
+            fetch(`/help?page=${pageName}`)
+              .then(response => response.json())
+              .then(data => {
+                modalTitle.innerHTML = '<i class="bi bi-question-circle me-2"></i>' + data.title;
+                modalBody.innerHTML = data.content;
+              })
+              .catch(error => {
+                modalTitle.innerHTML = '<i class="bi bi-exclamation-triangle me-2"></i>Error';
+                modalBody.innerHTML = '<p>Could not load help content. Please try again later.</p>';
+                console.error('Error fetching help content:', error);
+              });
+          } else {
+            modalTitle.innerHTML = '<i class="bi bi-question-circle me-2"></i>Help';
+            modalBody.innerHTML = '<p>No page context found. Cannot load specific help.</p>';
+          }
+        });
+      }
+    });
+  </script>
+
+  <script>
+    const _csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    const _csrfToken = _csrfMeta ? _csrfMeta.content : '';
+
+    function _csrfInjectForm(form) {
+      if (!form.querySelector('input[name="csrf_token"]')) {
+        const inp = document.createElement('input');
+        inp.type = 'hidden';
+        inp.name = 'csrf_token';
+        inp.value = _csrfToken;
+        form.appendChild(inp);
+      }
+    }
+
+    function _csrfInjectForms(root) {
+      root.querySelectorAll('form').forEach(_csrfInjectForm);
+    }
+
+    function _csrfHandleMutation(mutation) {
+      mutation.addedNodes.forEach(function (node) {
+        if (node.nodeType === 1) _csrfInjectForms(node);
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      _csrfInjectForms(document);
+      new MutationObserver(function (mutations) {
+        mutations.forEach(_csrfHandleMutation);
+      }).observe(document.body, { childList: true, subtree: true });
+    });
+
+    // Patch fetch() to add X-CSRFToken on non-GET requests
+    const _origFetch = globalThis.fetch;
+    globalThis.fetch = function (url, opts) {
+      opts = opts || {};
+      const method = (opts.method || 'GET').toUpperCase();
+      if (method !== 'GET' && method !== 'HEAD') {
+        const hdrs = opts.headers instanceof Headers
+          ? opts.headers
+          : new Headers(opts.headers || {});
+        if (!hdrs.has('X-CSRFToken')) hdrs.set('X-CSRFToken', _csrfToken);
+        opts.headers = hdrs;
+      }
+      return _origFetch(url, opts);
+    };
+
+    // Patch XMLHttpRequest to add X-CSRFToken on non-GET requests
+    const _xhrOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (method) {
+      this._csrfMethod = method;
+      return _xhrOpen.apply(this, arguments);
+    };
+    const _xhrSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function () {
+      if (this._csrfMethod && this._csrfMethod.toUpperCase() !== 'GET') {
+        this.setRequestHeader('X-CSRFToken', _csrfToken);
+      }
+      return _xhrSend.apply(this, arguments);
+    };
+  </script>
+
+  {% block scripts %}
+  {% endblock %}
+</body>
+
+</html>

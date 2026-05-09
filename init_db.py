@@ -143,7 +143,7 @@ def create_database_if_not_exists():
         except Exception as e:
             print(f"Warning: Could not set READ_WRITE mode: {e}")
             
-        print(f"Database settings configured.")
+        print("Database settings configured.")
         
         cursor.close()
         conn.close()
@@ -255,7 +255,7 @@ def create_schema_and_seed():
             print("Data seeding complete.")
 
         except Exception as e:
-            print(f"\nDatabase initialization FAILED.")
+            print("\nDatabase initialization FAILED.")
             
         finally:
             g.disable_auditing = False
